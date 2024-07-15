@@ -166,7 +166,8 @@ computeid(dst_key_t *key);
 static isc_result_t
 frombuffer(const dns_name_t *name, unsigned int alg, unsigned int flags,
 	   unsigned int protocol, dns_rdataclass_t rdclass,
-	   isc_buffer_t *source, isc_mem_t *mctx, dst_key_t **keyp);
+	   isc_buffer_t *source, isc_mem_t *mctx, bool no_rdata,
+	   dst_key_t **keyp);
 
 static isc_result_t
 algorithm_status(unsigned int alg);
@@ -712,6 +713,10 @@ dst_key_fromnamedfile(const char *filename, const char *dirname, int type,
 	}
 
 	key->modified = false;
+
+	if (dirname != NULL) {
+		key->directory = isc_mem_strdup(mctx, dirname);
+	}
 	*keyp = key;
 	key = NULL;
 
@@ -768,6 +773,13 @@ dst_key_todns(const dst_key_t *key, isc_buffer_t *target) {
 isc_result_t
 dst_key_fromdns(const dns_name_t *name, dns_rdataclass_t rdclass,
 		isc_buffer_t *source, isc_mem_t *mctx, dst_key_t **keyp) {
+	return (dst_key_fromdns_ex(name, rdclass, source, mctx, false, keyp));
+}
+
+isc_result_t
+dst_key_fromdns_ex(const dns_name_t *name, dns_rdataclass_t rdclass,
+		   isc_buffer_t *source, isc_mem_t *mctx, bool no_rdata,
+		   dst_key_t **keyp) {
 	uint8_t alg, proto;
 	uint32_t flags, extflags;
 	dst_key_t *key = NULL;
@@ -798,7 +810,7 @@ dst_key_fromdns(const dns_name_t *name, dns_rdataclass_t rdclass,
 	}
 
 	result = frombuffer(name, alg, flags, proto, rdclass, source, mctx,
-			    &key);
+			    no_rdata, &key);
 	if (result != ISC_R_SUCCESS) {
 		return (result);
 	}
@@ -819,7 +831,7 @@ dst_key_frombuffer(const dns_name_t *name, unsigned int alg, unsigned int flags,
 	REQUIRE(dst_initialized);
 
 	result = frombuffer(name, alg, flags, protocol, rdclass, source, mctx,
-			    &key);
+			    false, &key);
 	if (result != ISC_R_SUCCESS) {
 		return (result);
 	}
@@ -1045,8 +1057,8 @@ dst_key_fromlabel(const dns_name_t *name, int alg, unsigned int flags,
 isc_result_t
 dst_key_generate(const dns_name_t *name, unsigned int alg, unsigned int bits,
 		 unsigned int param, unsigned int flags, unsigned int protocol,
-		 dns_rdataclass_t rdclass, isc_mem_t *mctx, dst_key_t **keyp,
-		 void (*callback)(int)) {
+		 dns_rdataclass_t rdclass, const char *label, isc_mem_t *mctx,
+		 dst_key_t **keyp, void (*callback)(int)) {
 	dst_key_t *key;
 	isc_result_t ret;
 
@@ -1059,6 +1071,10 @@ dst_key_generate(const dns_name_t *name, unsigned int alg, unsigned int bits,
 
 	key = get_key_struct(name, alg, flags, protocol, bits, rdclass, 0,
 			     mctx);
+
+	if (label != NULL) {
+		key->label = isc_mem_strdup(mctx, label);
+	}
 
 	if (bits == 0) { /*%< NULL KEY */
 		key->key_flags |= DNS_KEYTYPE_NOKEY;
@@ -1408,6 +1424,9 @@ dst_key_free(dst_key_t **keyp) {
 			INSIST(key->func->destroy != NULL);
 			key->func->destroy(key);
 		}
+		if (key->directory != NULL) {
+			isc_mem_free(mctx, key->directory);
+		}
 		if (key->engine != NULL) {
 			isc_mem_free(mctx, key->engine);
 		}
@@ -1637,7 +1656,7 @@ dst_key_read_public(const char *filename, int type, isc_mem_t *mctx,
 	isc_token_t token;
 	isc_result_t ret;
 	dns_rdata_t rdata = DNS_RDATA_INIT;
-	unsigned int opt = ISC_LEXOPT_DNSMULTILINE;
+	unsigned int opt = ISC_LEXOPT_DNSMULTILINE | ISC_LEXOPT_ESCAPE;
 	dns_rdataclass_t rdclass = dns_rdataclass_in;
 	isc_lexspecials_t specials;
 	uint32_t ttl = 0;
@@ -2333,7 +2352,8 @@ computeid(dst_key_t *key) {
 static isc_result_t
 frombuffer(const dns_name_t *name, unsigned int alg, unsigned int flags,
 	   unsigned int protocol, dns_rdataclass_t rdclass,
-	   isc_buffer_t *source, isc_mem_t *mctx, dst_key_t **keyp) {
+	   isc_buffer_t *source, isc_mem_t *mctx, bool no_rdata,
+	   dst_key_t **keyp) {
 	dst_key_t *key;
 	isc_result_t ret;
 
@@ -2355,10 +2375,12 @@ frombuffer(const dns_name_t *name, unsigned int alg, unsigned int flags,
 			return (DST_R_UNSUPPORTEDALG);
 		}
 
-		ret = key->func->fromdns(key, source);
-		if (ret != ISC_R_SUCCESS) {
-			dst_key_free(&key);
-			return (ret);
+		if (!no_rdata) {
+			ret = key->func->fromdns(key, source);
+			if (ret != ISC_R_SUCCESS) {
+				dst_key_free(&key);
+				return (ret);
+			}
 		}
 	}
 
