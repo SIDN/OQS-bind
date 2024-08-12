@@ -1152,12 +1152,14 @@ static dst_func_t opensslrsa_functions = {
 	opensslrsa_destroyctx,
 	opensslrsa_adddata,
 	opensslrsa_sign,
+	NULL, /*%< finalizesignature */
 	opensslrsa_verify,
 	opensslrsa_verify2,
 	NULL, /*%< computesecret */
 	dst__openssl_keypair_compare,
 	NULL, /*%< paramcompare */
 	opensslrsa_generate,
+	NULL, /*%< finalizekey */
 	dst__openssl_keypair_isprivate,
 	dst__openssl_keypair_destroy,
 	opensslrsa_todns,
