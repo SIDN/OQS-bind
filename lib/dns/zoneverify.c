@@ -1465,7 +1465,7 @@ check_dnskey_sigs(vctx_t *vctx, const dns_rdata_dnskey_t *dnskey,
 	// JG note: TODO update with merkle tree algorithm
 	if (!dns_dnssec_selfsigns(keyrdata, vctx->origin, &vctx->keyset,
 				  &vctx->keysigs, false, vctx->mctx)
-			&& dnskey->algorithm != DST_ALG_ECDSA256)
+			&& !dst_algorithm_is_deferred_signing(dnskey->algorithm))
 	{
 		if (!is_ksk &&
 		    dns_dnssec_signs(keyrdata, vctx->origin, &vctx->soaset,
@@ -1661,7 +1661,7 @@ determine_active_algorithms(vctx_t *vctx, bool ignore_kskflag,
 			vctx->act_algorithms[i] = vctx->ksk_algorithms[i] != 0
 							  ? 1
 							  : 0;
-			if (i == DST_ALG_ECDSA256) {
+			if (dst_algorithm_is_deferred_signing(i)) {
 				vctx->act_algorithms[i] = (vctx->act_algorithms[i] !=
 								0 ||
 							   vctx->zsk_algorithms[i] != 0)

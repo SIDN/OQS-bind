@@ -195,6 +195,7 @@ libdns_la_SOURCES =			\
 	keymgr.c			\
 	keystore.c			\
 	keytable.c			\
+	liboqsstateful_link.c           \
 	log.c				\
 	master.c			\
 	masterdump.c			\
@@ -205,7 +206,6 @@ libdns_la_SOURCES =			\
 	nsec.c				\
 	nsec3.c				\
 	nta.c				\
-	liboqsstateful_link.c           \
 	openssl_link.c			\
 	openssl_shim.c			\
 	openssl_shim.h			\
@@ -243,6 +243,7 @@ libdns_la_SOURCES =			\
 	rpz.c				\
 	rrl.c				\
 	rriterator.c			\
+	saqmerklestream_link.c		\
 	sdlz.c				\
 	soa.c				\
 	ssu.c				\
@@ -279,6 +280,7 @@ libdns_la_CPPFLAGS =		\
 	$(AM_CPPFLAGS)		\
 	$(LIBDNS_CFLAGS)	\
 	$(LIBISC_CFLAGS)	\
+	$(LIBSAQ_CFLAGS)	\
 	$(LIBURCU_CFLAGS)	\
 	$(LIBUV_CFLAGS)		\
 	$(OPENSSL_CFLAGS)
@@ -289,6 +291,7 @@ libdns_la_LDFLAGS =		\
 
 libdns_la_LIBADD =		\
 	$(LIBISC_LIBS)		\
+	$(LIBSAQ_LIBS)		\
 	$(LIBURCU_LIBS)		\
 	$(LIBUV_LIBS)		\
 	$(OPENSSL_LIBS)

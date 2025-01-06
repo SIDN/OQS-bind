@@ -718,7 +718,7 @@ signset(dns_diff_t *del, dns_diff_t *add, dns_dbnode_t *node, dns_name_t *name,
 			if (isksk(key) || !have_ksk ||
 			    (iszsk(key) && !keyset_kskonly))
 			{
-				if (!defer_signing || !iszsk(key) || (set->type == dns_rdatatype_dnskey && dst_key_alg(key->key) != DST_ALG_ECDSA256)) {
+				if (!defer_signing || !iszsk(key) || (set->type == dns_rdatatype_dnskey && !dst_key_is_deferred_signing(key->key))) {
 					signwithkey(name, set, key->key, ttl, add,
 						    "signing with dnskey", check_now);
 				}
@@ -3363,7 +3363,7 @@ print_stats(isc_time_t *timer_start, isc_time_t *timer_finish,
 }
 
 static void
-finalize_node_rrsigs(dns_dbnode_t *node, dns_name_t *name, dns_diff_t *add, dns_diff_t *del, dns_dnsseckey_t *key, uint16_t orig, uint16_t new) {
+finalize_node_rrsigs(dns_dbnode_t *node, dns_name_t *name, dns_diff_t *add, dns_diff_t *del, dns_dnsseckey_t *key, uint16_t old_keytag) {
 	isc_result_t result;
 	dns_rdatasetiter_t *rdsiter = NULL;
 	dns_rdataset_t rdataset;
@@ -3389,22 +3389,14 @@ finalize_node_rrsigs(dns_dbnode_t *node, dns_name_t *name, dns_diff_t *add, dns_
 			if (rrsig_rdata.type == dns_rdatatype_rrsig) {
 				rrsigresult = dns_rdata_tostruct(&rrsig_rdata, &rrsig, NULL);
 				if (rrsigresult == ISC_R_SUCCESS) {
-					if (rrsig.keyid == orig) {
+					if (rrsig.keyid == old_keytag) {
+						char data[4096];
+						isc_buffer_t databuf;
 						dns_difftuple_t *addtuple = NULL;
 						dns_difftuple_t *deltuple = NULL;
 						dns_rdata_t new_rrsig_rdata = DNS_RDATA_INIT;
-						dns_rdata_t old_rrsig_rdata = DNS_RDATA_INIT;
-
-						dns_rdata_clone(&rrsig_rdata, &old_rrsig_rdata);
-						rrsig.keyid = new;
-
-						// TODO finalize sig.
-						unsigned char data[4096];
-						isc_buffer_t buffer;
-
-						isc_buffer_init(&buffer, data, sizeof(data));
-						dns_rdata_fromstruct(&new_rrsig_rdata, rdataset.rdclass,
-								     dns_rdatatype_rrsig, &rrsig, &buffer);
+						isc_buffer_init(&databuf, data, sizeof(data));
+						check_result(dst_key_signature_finalize(key->key, &databuf, &rrsig_rdata, &new_rrsig_rdata), "signature finalize");
 						if (tryverify) {
 							dns_rdataset_t target_rdataset;
 							dns_rdataset_init(&target_rdataset);
@@ -3429,7 +3421,7 @@ finalize_node_rrsigs(dns_dbnode_t *node, dns_name_t *name, dns_diff_t *add, dns_
 						check_result(result, "dns_difftuple_create");
 						result = dns_difftuple_create(mctx,
 								DNS_DIFFOP_DELRESIGN, name,
-								rdataset.ttl, &old_rrsig_rdata, &deltuple);
+								rdataset.ttl, &rrsig_rdata, &deltuple);
 						check_result(result, "dns_difftuple_create");
 						dns_diff_append(add, &addtuple);
 						dns_diff_append(del, &deltuple);
@@ -3446,7 +3438,7 @@ finalize_node_rrsigs(dns_dbnode_t *node, dns_name_t *name, dns_diff_t *add, dns_
 }
 
 static void
-finalize_rrsigs(dns_diff_t *add, dns_diff_t *del, dns_dnsseckey_t *key, uint16_t orig, uint16_t new) {
+finalize_rrsigs(dns_diff_t *add, dns_diff_t *del, dns_dnsseckey_t *key, uint16_t old_keytag) {
 	dns_dbnode_t *node = NULL;
 	dns_fixedname_t fixed;
 	dns_name_t *name;
@@ -3459,7 +3451,7 @@ finalize_rrsigs(dns_diff_t *add, dns_diff_t *del, dns_dnsseckey_t *key, uint16_t
 	check_result(result, "dns_dbiterator_seek()");
 	result = dns_dbiterator_current(dbiter, &node, name);
 	check_dns_dbiterator_current(result);
-	finalize_node_rrsigs(node, name, add, del, key, orig, new);
+	finalize_node_rrsigs(node, name, add, del, key, old_keytag);
 	dns_db_detachnode(gdb, &node);
 	result = dns_dbiterator_first(dbiter);
 	dns_fixedname_t fname;
@@ -3472,7 +3464,7 @@ finalize_rrsigs(dns_diff_t *add, dns_diff_t *del, dns_dnsseckey_t *key, uint16_t
 		if (dns_name_equal(name, gorigin)) {
 			goto next;
 		}
-		finalize_node_rrsigs(node, name, add, del, key, orig, new);
+		finalize_node_rrsigs(node, name, add, del, key, old_keytag);
 	next:
 		result = dns_dbiterator_next(dbiter);
 		dns_db_detachnode(gdb, &node);
@@ -3513,7 +3505,7 @@ defered_finalize_signing(dns_dbnode_t *node, dns_name_t *name) {
 		/* Now that the all other signatures are signed, finalize defer signing
 		 * key and sign DNSKEY set. */
 		if (rdataset.type != dns_rdatatype_dnskey) {
-			goto key_skip;
+			goto finalize_skip;
 		}
 
 		// Finalize all keys located in this set
@@ -3531,22 +3523,46 @@ defered_finalize_signing(dns_dbnode_t *node, dns_name_t *name) {
 				uint16_t keytag = dst_region_computeid(&key_r);
 				keyresult = dns_rdata_tostruct(&key_rdata, &dnskey, NULL);
 				if (keyresult == ISC_R_SUCCESS) {
-					if (dnskey.algorithm == DST_ALG_ECDSA256) {
+					if (dst_algorithm_is_deferred_signing(dnskey.algorithm)) {
 						dns_dnsseckey_t *key = NULL;
-						uint16_t new_keytag = keytag;
 						for (key = ISC_LIST_HEAD(keylist); key != NULL;
 						     key = ISC_LIST_NEXT(key, link))
 						{
 							if (dst_key_id(key->key) == keytag &&
 							    dst_key_alg(key->key) == dnskey.algorithm)
 							{
-								// TODO finalize key here
-								new_keytag = 0;
+								dns_difftuple_t *addtuple = NULL;
+								dns_difftuple_t *deltuple = NULL;
+								unsigned char data[4096];
+								isc_buffer_t buffer;
+								isc_region_t r;
+
+								isc_buffer_init(&buffer, data, sizeof(data));
+								check_result(dst_key_finalize(key->key), "dst_key_finalize");
+								dns_rdata_t new_dnskey_rdata = DNS_RDATA_INIT;
+								dns_rdata_t old_dnskey_rdata = DNS_RDATA_INIT;
+
+								dns_rdata_clone(&key_rdata, &old_dnskey_rdata);
+								result = dst_key_todns(key->key, &buffer);
+								check_result(result, "dst_key_todns");
+								isc_buffer_usedregion(&buffer, &r);
+								dns_rdata_fromregion(&new_dnskey_rdata, key_rdata.rdclass, dns_rdatatype_dnskey, &r);
+
+								result = dns_difftuple_create(mctx,
+										DNS_DIFFOP_ADDRESIGN, name,
+										rdataset.ttl, &new_dnskey_rdata, &addtuple);
+								check_result(result, "dns_difftuple_create");
+								result = dns_difftuple_create(mctx,
+										DNS_DIFFOP_DELRESIGN, name,
+										rdataset.ttl, &old_dnskey_rdata, &deltuple);
+								check_result(result, "dns_difftuple_create");
+								dns_diff_append(&add, &addtuple);
+								dns_diff_append(&del, &deltuple);
 								break;
 							}
 						}
 						if (key != NULL) {
-							finalize_rrsigs(&add, &del, key, keytag, new_keytag);
+							finalize_rrsigs(&add, &del, key, keytag);
 						}
 					}
 					dns_rdata_freestruct(&dnskey);
@@ -3554,9 +3570,7 @@ defered_finalize_signing(dns_dbnode_t *node, dns_name_t *name) {
 			}
 		}
 
-		signset(&del, &add, node, name, &rdataset, true);
-
-	key_skip:
+	finalize_skip:
 		dns_rdataset_disassociate(&rdataset);
 		result = dns_rdatasetiter_next(rdsiter);
 	}
@@ -3578,6 +3592,40 @@ defered_finalize_signing(dns_dbnode_t *node, dns_name_t *name) {
 		      isc_result_totext(result));
 	}
 
+	dns_diff_clear(&del);
+	dns_diff_clear(&add);
+	result = dns_db_allrdatasets(gdb, node, gversion, 0, 0, &rdsiter);
+	check_result(result, "dns_db_allrdatasets()");
+	result = dns_rdatasetiter_first(rdsiter);
+	while (result == ISC_R_SUCCESS) {
+		dns_rdatasetiter_current(rdsiter, &rdataset);
+
+		/* Now that the all other signatures are signed, finalize defer signing
+		 * key and sign DNSKEY set. */
+		if (rdataset.type != dns_rdatatype_dnskey) {
+			goto sign_skip;
+		}
+
+
+		signset(&del, &add, node, name, &rdataset, true);
+
+	sign_skip:
+		dns_rdataset_disassociate(&rdataset);
+		result = dns_rdatasetiter_next(rdsiter);
+	}
+	
+	dns_rdatasetiter_destroy(&rdsiter);
+	result = dns_diff_applysilently(&del, gdb, gversion);
+	if (result != ISC_R_SUCCESS) {
+		fatal("failed to delete SIGs at node '%s': %s", namestr,
+		      isc_result_totext(result));
+	}
+
+	result = dns_diff_applysilently(&add, gdb, gversion);
+	if (result != ISC_R_SUCCESS) {
+		fatal("failed to add SIGs at node '%s': %s", namestr,
+		      isc_result_totext(result));
+	}
 	dns_diff_clear(&del);
 	dns_diff_clear(&add);
 }
@@ -4290,7 +4338,7 @@ main(int argc, char *argv[]) {
 	     key = ISC_LIST_NEXT(key, link))
 	{
 		key->index = keycount++;
-		if (dst_key_alg(key->key) == DST_ALG_ECDSA256) {
+		if (dst_key_is_deferred_signing(key->key)) {
 			defer_signing = true;
 		}
 	}
