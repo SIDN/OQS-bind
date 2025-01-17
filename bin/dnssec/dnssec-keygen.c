@@ -163,7 +163,7 @@ usage(void) {
 	fprintf(stderr, "        ECDSAP256SHA256 | ECDSAP384SHA384 |\n");
 	fprintf(stderr, "        ED25519 | ED448\n");
 	fprintf(stderr, "        ED25519 | ED448 | DH\n");
-	fprintf(stderr, "        FALCON512 | DILITHIUM2 |\n");
+	fprintf(stderr, "        FALCON512 | DILITHIUM2 | MAYO2 \n");
 	fprintf(stderr, "        SPHINCS+-SHA256-128S\n");
 	fprintf(stderr, "    -3: use NSEC3-capable algorithm\n");
 	fprintf(stderr, "    -b <key size in bits>:\n");
@@ -181,6 +181,7 @@ usage(void) {
 	fprintf(stderr, "        ED448:\tignored\n");
 	fprintf(stderr, "        FALCON512:\tignored\n");
 	fprintf(stderr, "        DILITHIUM2:\tignored\n");
+	fprintf(stderr, "        MAYO2:\tignored\n");
 	fprintf(stderr, "        SPHINCS+-SHA256-128S:\tignored\n");
 	fprintf(stderr, "        (key size defaults are set according to\n"
 			"        algorithm and usage (ZSK or KSK)\n");
@@ -367,6 +368,7 @@ keygen(keygen_ctx_t *ctx, isc_mem_t *mctx, int argc, char **argv) {
 			case DST_ALG_ECDSA384:
 			case DST_ALG_ED25519:
 			case DST_ALG_ED448:
+			case DST_ALG_MAYO2:
 			case DST_ALG_FALCON512:
 			case DST_ALG_DILITHIUM2:
 			case DST_ALG_SPHINCSSHA256128S:
@@ -422,6 +424,7 @@ keygen(keygen_ctx_t *ctx, isc_mem_t *mctx, int argc, char **argv) {
 			case DST_ALG_ECDSA384:
 			case DST_ALG_ED25519:
 			case DST_ALG_ED448:
+			case DST_ALG_MAYO2:
 			case DST_ALG_FALCON512:
 			case DST_ALG_DILITHIUM2:
 			case DST_ALG_SPHINCSSHA256128S:
@@ -590,6 +593,9 @@ keygen(keygen_ctx_t *ctx, isc_mem_t *mctx, int argc, char **argv) {
 		break;
 	case DST_ALG_ED448:
 		ctx->size = 456;
+		break;
+	case DST_ALG_MAYO2:
+		ctx->size = 5488*8;
 		break;
 	case DST_ALG_FALCON512:
 		ctx->size = 7176;

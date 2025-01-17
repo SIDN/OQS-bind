@@ -238,6 +238,7 @@ cfg_kaspkey_fromconfig(const cfg_obj_t *config, dns_kasp_t *kasp,
 			case DNS_KEYALG_ECDSA384:
 			case DNS_KEYALG_ED25519:
 			case DNS_KEYALG_ED448:
+			case DNS_KEYALG_MAYO2:
 			case DNS_KEYALG_FALCON512:
 			case DNS_KEYALG_DILITHIUM2:
 			case DNS_KEYALG_SPHINCSSHA256128S:
