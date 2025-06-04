@@ -112,6 +112,7 @@
 		{ DNS_KEYALG_ED25519, "ED25519", 0 },                        \
 		{ DNS_KEYALG_ED448, "ED448", 0 },                            \
 		{ DNS_KEYALG_MAYO2, "MAYO2", 0 },                            \
+		{ DNS_KEYALG_SQISIGN1, "SQISIGN1", 0 },                      \
 		{ DNS_KEYALG_FALCON512, "FALCON512", 0 },                    \
 		{ DNS_KEYALG_DILITHIUM2, "DILITHIUM2", 0 },                  \
 		{ DNS_KEYALG_SPHINCSSHA256128S, "SPHINCS+-SHA256-128S", 0 }, \
