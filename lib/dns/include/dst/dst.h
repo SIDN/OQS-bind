@@ -123,7 +123,8 @@ typedef enum dst_algorithm {
 
 /*% A buffer of this size is large enough to hold any key */
 // #define DST_KEY_MAXSIZE 5120 // OQS changed from 1280
-#define DST_KEY_MAXSIZE 5492 // OQS+MAYO2 changed from 5120
+// #define DST_KEY_MAXSIZE 5492 // OQS+MAYO2 changed from 5120
+#define DST_KEY_MAXSIZE 5120 // OQS+MAYO2,round2 change it back
 
 /*%
  * A buffer of this size is large enough to hold the textual representation

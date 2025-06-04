@@ -595,7 +595,7 @@ keygen(keygen_ctx_t *ctx, isc_mem_t *mctx, int argc, char **argv) {
 		ctx->size = 456;
 		break;
 	case DST_ALG_MAYO2:
-		ctx->size = 5488*8;
+		ctx->size = 4912*8;
 		break;
 	case DST_ALG_FALCON512:
 		ctx->size = 7176;
