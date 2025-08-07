@@ -459,6 +459,9 @@ dns_kasp_key_size(dns_kasp_key_t *key) {
 	case DST_ALG_MAYO2:
 		size = 4912*8;
 		break;
+	case DST_ALG_SQISIGN1:
+		size = 65*8;
+		break;
 	case DST_ALG_FALCON512:
 		size = 7176;
 		break;

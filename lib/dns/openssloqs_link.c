@@ -40,6 +40,7 @@
 	}
 
 #define MAYO2_PRIVATEKEYSIZE	 	 24
+#define SQISIGN1_PRIVATEKEYSIZE	 	 353
 #define FALCON512_PRIVATEKEYSIZE	 1281
 #define DILITHIUM2_PRIVATEKEYSIZE	 2528
 #define SPHINCSSHA256128S_PRIVATEKEYSIZE 64
@@ -80,6 +81,19 @@ openssloqs_alg_info(dst_algorithm_t key_alg) {
 				.ntags = OQS_PQC_NTAGS,
 				.private_key_tag = TAG_MAYO2_PRIVATEKEY,
 				.public_key_tag = TAG_MAYO2_PUBLICKEY, },
+		};
+		return &oqs_alginfo;
+	}
+	if (key_alg == DST_ALG_SQISIGN1) {
+		static const oqs_alginfo_t oqs_alginfo = {
+			.alg_name = "sqisign1",
+			.key_size = DNS_KEY_SQISIGN1SIZE,
+			.priv_key_size = SQISIGN1_PRIVATEKEYSIZE,
+			.sig_size = DNS_SIG_SQISIGN1SIZE,
+			.tags = {
+				.ntags = OQS_PQC_NTAGS,
+				.private_key_tag = TAG_SQISIGN1_PRIVATEKEY,
+				.public_key_tag = TAG_SQISIGN1_PUBLICKEY, },
 		};
 		return &oqs_alginfo;
 	}
@@ -530,12 +544,14 @@ openssloqs_parse(dst_key_t *key, isc_lex_t *lexer, dst_key_t *pub) {
 	for (i = 0; i < priv.nelements; i++) {
 		switch (priv.elements[i].tag) {
 		case TAG_MAYO2_PRIVATEKEY:
+		case TAG_SQISIGN1_PRIVATEKEY:
 		case TAG_FALCON512_PRIVATEKEY:
 		case TAG_DILITHIUM2_PRIVATEKEY:
 		case TAG_SPHINCSSHA256128S_PRIVATEKEY:
 			privkey_index = i;
 			break;
 		case TAG_MAYO2_PUBLICKEY:
+		case TAG_SQISIGN1_PUBLICKEY:
 		case TAG_FALCON512_PUBLICKEY:
 		case TAG_DILITHIUM2_PUBLICKEY:
 		case TAG_SPHINCSSHA256128S_PUBLICKEY:

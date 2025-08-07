@@ -399,6 +399,7 @@ main(int argc, char **argv) {
 			case DST_ALG_ED25519:
 			case DST_ALG_ED448:
 			case DST_ALG_MAYO2:
+			case DST_ALG_SQISIGN1:
 			case DST_ALG_FALCON512:
 			case DST_ALG_DILITHIUM2:
 			case DST_ALG_SPHINCSSHA256128S:
