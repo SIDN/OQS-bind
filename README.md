@@ -11,6 +11,7 @@ This project is not officially affiliated with Open Quantum Safe.
 |            Algorithm         | DNSSEC Algorithm ID |
 | ---------------------------- | ------------------- |
 |           MAYO-2             |         249         |
+|           SQISign-1          |         250         |
 |           Falcon-512         |         251         |
 
 ## Building
