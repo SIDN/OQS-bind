@@ -86,7 +86,7 @@ openssloqs_alg_info(dst_algorithm_t key_alg) {
 	}
 	if (key_alg == DST_ALG_SQISIGN1) {
 		static const oqs_alginfo_t oqs_alginfo = {
-			.alg_name = "sqisign1",
+			.alg_name = "sqisignlvl1",
 			.key_size = DNS_KEY_SQISIGN1SIZE,
 			.priv_key_size = SQISIGN1_PRIVATEKEYSIZE,
 			.sig_size = DNS_SIG_SQISIGN1SIZE,
