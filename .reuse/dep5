@@ -81,7 +81,10 @@ Files: **/*.after*
        bin/tests/system/unknown/large.out
        bin/tests/system/xfer/ans5/badkeydata
        bin/tests/system/xfer/ans5/badmessageid
+       bin/tests/system/xfer/ans5/ednsformerr
+       bin/tests/system/xfer/ans5/ednsnotimp
        bin/tests/system/xfer/ans5/goodaxfr
+       bin/tests/system/xfer/ans5/ixfrnotimp
        bin/tests/system/xfer/ans5/partial
        bin/tests/system/xfer/ans5/soamismatch
        bin/tests/system/xfer/ans5/unknownkey
@@ -157,6 +160,7 @@ Files: **/.clang-format
        .clang-format
        .clang-format.headers
        .dir-locals.el
+       .editorconfig
        .git-blame-ignore-revs
        .gitattributes
        .gitignore
@@ -170,6 +174,7 @@ Files: **/.clang-format
        doc/misc/options
        doc/misc/rndc.grammar
        sonar-project.properties
+       tests/bench/names.csv
 Copyright: Internet Systems Consortium, Inc. ("ISC")
 License: CC0-1.0
 

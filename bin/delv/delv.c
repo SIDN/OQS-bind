@@ -1380,10 +1380,6 @@ plus_option(char *option) {
 		fprintf(stderr, "Invalid option: +%s\n", option);
 		usage();
 	}
-
-	if (qmin && !fulltrace) {
-		fatal("'+qmin' cannot be used without '+ns'");
-	}
 	return;
 }
 
@@ -1732,6 +1728,11 @@ parse_args(int argc, char **argv) {
 		}
 	}
 
+	/* check consistency */
+	if (qmin && !fulltrace) {
+		fatal("'+qmin' cannot be used without '+ns'");
+	}
+
 	/*
 	 * If no qname or qtype specified, search for root/NS
 	 * If no qtype specified, use A
@@ -1961,7 +1962,8 @@ recvresponse(void *arg) {
 		fatal("request event result: %s", isc_result_totext(result));
 	}
 
-	dns_message_create(mctx, DNS_MESSAGE_INTENTPARSE, &response);
+	dns_message_create(mctx, NULL, NULL, DNS_MESSAGE_INTENTPARSE,
+			   &response);
 
 	result = dns_request_getresponse(request, response,
 					 DNS_MESSAGEPARSE_PRESERVEORDER);
@@ -2076,7 +2078,8 @@ sendquery(void *arg) {
 	/* Construct query message */
 	CHECK(convert_name(&qfn, &query_name, qname));
 
-	dns_message_create(mctx, DNS_MESSAGE_INTENTRENDER, &message);
+	dns_message_create(mctx, NULL, NULL, DNS_MESSAGE_INTENTRENDER,
+			   &message);
 	message->opcode = dns_opcode_query;
 	message->flags = DNS_MESSAGEFLAG_RD | DNS_MESSAGEFLAG_AD;
 	if (cdflag) {
@@ -2144,7 +2147,7 @@ run_server(void *arg) {
 
 	ns_server_create(mctx, matchview, &sctx);
 
-	CHECK(dns_dispatchmgr_create(mctx, netmgr, &dispatchmgr));
+	CHECK(dns_dispatchmgr_create(mctx, loopmgr, netmgr, &dispatchmgr));
 	isc_sockaddr_any(&any);
 	CHECK(dns_dispatch_createudp(dispatchmgr, &any, &dispatch));
 	CHECK(ns_interfacemgr_create(mctx, sctx, loopmgr, netmgr, dispatchmgr,
@@ -2167,7 +2170,7 @@ run_server(void *arg) {
 	dns_view_initsecroots(view);
 	CHECK(setup_dnsseckeys(NULL, view));
 
-	CHECK(dns_view_createresolver(view, loopmgr, 1, netmgr, 0,
+	CHECK(dns_view_createresolver(view, loopmgr, netmgr, 0,
 				      tlsctx_client_cache, dispatch, NULL));
 
 	isc_stats_create(mctx, &resstats, dns_resstatscounter_max);
@@ -2184,7 +2187,8 @@ run_server(void *arg) {
 
 	CHECK(isc_nm_listenstreamdns(netmgr, ISC_NM_LISTEN_ONE, &addr,
 				     ns_client_request, ifp, accept_cb, ifp, 10,
-				     NULL, NULL, &ifp->tcplistensocket));
+				     NULL, NULL, ISC_NM_PROXY_NONE,
+				     &ifp->tcplistensocket));
 	ifp->flags |= NS_INTERFACEFLAG_LISTENING;
 	isc_async_current(loopmgr, sendquery, ifp->tcplistensocket);
 

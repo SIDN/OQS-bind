@@ -104,7 +104,6 @@ static void
 destroy_keynode(dns_keynode_t *knode) {
 	dns_rdata_t *rdata = NULL;
 
-	isc_refcount_destroy(&knode->references);
 	isc_rwlock_destroy(&knode->rwlock);
 	if (knode->dslist != NULL) {
 		for (rdata = ISC_LIST_HEAD(knode->dslist->rdata); rdata != NULL;
@@ -156,14 +155,13 @@ destroy_keytable(dns_keytable_t *keytable) {
 
 	dns_qpmulti_query(keytable->table, &qpr);
 	dns_qpiter_init(&qpr, &iter);
-	while (dns_qpiter_next(&iter, &pval, NULL) == ISC_R_SUCCESS) {
+	while (dns_qpiter_next(&iter, NULL, &pval, NULL) == ISC_R_SUCCESS) {
 		dns_keynode_t *n = pval;
 		dns_keynode_detach(&n);
 	}
 	dns_qpread_destroy(keytable->table, &qpr);
 
 	dns_qpmulti_destroy(&keytable->table);
-	isc_refcount_destroy(&keytable->references);
 
 	isc_mem_putanddetach(&keytable->mctx, keytable, sizeof(*keytable));
 }
@@ -521,7 +519,7 @@ dns_keytable_finddeepestmatch(dns_keytable_t *keytable, const dns_name_t *name,
 	REQUIRE(foundname != NULL);
 
 	dns_qpmulti_query(keytable->table, &qpr);
-	result = dns_qp_findname_ancestor(&qpr, name, 0, &pval, NULL);
+	result = dns_qp_lookup(&qpr, name, NULL, NULL, NULL, &pval, NULL);
 	keynode = pval;
 
 	if (result == ISC_R_SUCCESS || result == DNS_R_PARTIALMATCH) {
@@ -550,7 +548,7 @@ dns_keytable_issecuredomain(dns_keytable_t *keytable, const dns_name_t *name,
 	REQUIRE(wantdnssecp != NULL);
 
 	dns_qpmulti_query(keytable->table, &qpr);
-	result = dns_qp_findname_ancestor(&qpr, name, 0, &pval, NULL);
+	result = dns_qp_lookup(&qpr, name, NULL, NULL, NULL, &pval, NULL);
 	if (result == ISC_R_SUCCESS || result == DNS_R_PARTIALMATCH) {
 		keynode = pval;
 		if (foundname != NULL) {
@@ -668,7 +666,7 @@ dns_keytable_totext(dns_keytable_t *keytable, isc_buffer_t **text) {
 	dns_qpmulti_query(keytable->table, &qpr);
 	dns_qpiter_init(&qpr, &iter);
 
-	while (dns_qpiter_next(&iter, &pval, NULL) == ISC_R_SUCCESS) {
+	while (dns_qpiter_next(&iter, NULL, &pval, NULL) == ISC_R_SUCCESS) {
 		dns_keynode_t *knode = pval;
 		if (knode->dslist != NULL) {
 			result = keynode_dslist_totext(knode, text);
@@ -696,7 +694,7 @@ dns_keytable_forall(dns_keytable_t *keytable,
 	dns_qpmulti_query(keytable->table, &qpr);
 	dns_qpiter_init(&qpr, &iter);
 
-	while (dns_qpiter_next(&iter, &pval, NULL) == ISC_R_SUCCESS) {
+	while (dns_qpiter_next(&iter, NULL, &pval, NULL) == ISC_R_SUCCESS) {
 		dns_keynode_t *knode = pval;
 		(*func)(keytable, knode, knode->name, arg);
 	}

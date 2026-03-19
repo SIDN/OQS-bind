@@ -308,10 +308,7 @@ ns_interfacemgr_create(isc_mem_t *mctx, ns_server_t *sctx,
 	}
 	ns_listenlist_attach(mgr->listenon4, &mgr->listenon6);
 
-	result = dns_aclenv_create(mctx, &mgr->aclenv);
-	if (result != ISC_R_SUCCESS) {
-		goto cleanup_listenon;
-	}
+	dns_aclenv_create(mctx, &mgr->aclenv);
 #if defined(HAVE_GEOIP2)
 	mgr->aclenv->geoip = geoip;
 #else  /* if defined(HAVE_GEOIP2) */
@@ -347,9 +344,6 @@ ns_interfacemgr_create(isc_mem_t *mctx, ns_server_t *sctx,
 
 	return (ISC_R_SUCCESS);
 
-cleanup_listenon:
-	ns_listenlist_detach(&mgr->listenon4);
-	ns_listenlist_detach(&mgr->listenon6);
 cleanup_lock:
 	isc_mutex_destroy(&mgr->lock);
 	ns_server_detach(&mgr->sctx);
@@ -477,24 +471,31 @@ ns_interface_create(ns_interfacemgr_t *mgr, isc_sockaddr_t *addr,
 }
 
 static isc_result_t
-ns_interface_listenudp(ns_interface_t *ifp) {
+ns_interface_listenudp(ns_interface_t *ifp, isc_nm_proxy_type_t proxy) {
 	isc_result_t result;
 
 	/* Reserve space for an ns_client_t with the netmgr handle */
-	result = isc_nm_listenudp(ifp->mgr->nm, ISC_NM_LISTEN_ALL, &ifp->addr,
-				  ns_client_request, ifp,
-				  &ifp->udplistensocket);
+	if (proxy == ISC_NM_PROXY_NONE) {
+		result = isc_nm_listenudp(ifp->mgr->nm, ISC_NM_LISTEN_ALL,
+					  &ifp->addr, ns_client_request, ifp,
+					  &ifp->udplistensocket);
+	} else {
+		INSIST(proxy == ISC_NM_PROXY_PLAIN);
+		result = isc_nm_listenproxyudp(ifp->mgr->nm, ISC_NM_LISTEN_ALL,
+					       &ifp->addr, ns_client_request,
+					       ifp, &ifp->udplistensocket);
+	}
 	return (result);
 }
 
 static isc_result_t
-ns_interface_listentcp(ns_interface_t *ifp) {
+ns_interface_listentcp(ns_interface_t *ifp, isc_nm_proxy_type_t proxy) {
 	isc_result_t result;
 
 	result = isc_nm_listenstreamdns(
 		ifp->mgr->nm, ISC_NM_LISTEN_ALL, &ifp->addr, ns_client_request,
 		ifp, ns__client_tcpconn, ifp, ifp->mgr->backlog,
-		&ifp->mgr->sctx->tcpquota, NULL, &ifp->tcplistensocket);
+		&ifp->mgr->sctx->tcpquota, NULL, proxy, &ifp->tcplistensocket);
 	if (result != ISC_R_SUCCESS) {
 		isc_log_write(IFMGR_COMMON_LOGARGS, ISC_LOG_ERROR,
 			      "creating TCP socket: %s",
@@ -521,13 +522,15 @@ ns_interface_listentcp(ns_interface_t *ifp) {
  * TLS related options.
  */
 static isc_result_t
-ns_interface_listentls(ns_interface_t *ifp, isc_tlsctx_t *sslctx) {
+ns_interface_listentls(ns_interface_t *ifp, isc_nm_proxy_type_t proxy,
+		       isc_tlsctx_t *sslctx) {
 	isc_result_t result;
 
 	result = isc_nm_listenstreamdns(
 		ifp->mgr->nm, ISC_NM_LISTEN_ALL, &ifp->addr, ns_client_request,
 		ifp, ns__client_tcpconn, ifp, ifp->mgr->backlog,
-		&ifp->mgr->sctx->tcpquota, sslctx, &ifp->tcplistensocket);
+		&ifp->mgr->sctx->tcpquota, sslctx, proxy,
+		&ifp->tcplistensocket);
 
 	if (result != ISC_R_SUCCESS) {
 		isc_log_write(IFMGR_COMMON_LOGARGS, ISC_LOG_ERROR,
@@ -570,9 +573,9 @@ load_http_endpoints(isc_nm_http_endpoints_t *epset, ns_interface_t *ifp,
 #endif /* HAVE_LIBNGHTTP2 */
 
 static isc_result_t
-ns_interface_listenhttp(ns_interface_t *ifp, isc_tlsctx_t *sslctx, char **eps,
-			size_t neps, uint32_t max_clients,
-			uint32_t max_concurrent_streams) {
+ns_interface_listenhttp(ns_interface_t *ifp, isc_nm_proxy_type_t proxy,
+			isc_tlsctx_t *sslctx, char **eps, size_t neps,
+			uint32_t max_clients, uint32_t max_concurrent_streams) {
 #if HAVE_LIBNGHTTP2
 	isc_result_t result = ISC_R_FAILURE;
 	isc_nmsocket_t *sock = NULL;
@@ -586,10 +589,10 @@ ns_interface_listenhttp(ns_interface_t *ifp, isc_tlsctx_t *sslctx, char **eps,
 	if (result == ISC_R_SUCCESS) {
 		quota = isc_mem_get(ifp->mgr->mctx, sizeof(*quota));
 		isc_quota_init(quota, max_clients);
-		result = isc_nm_listenhttp(ifp->mgr->nm, ISC_NM_LISTEN_ALL,
-					   &ifp->addr, ifp->mgr->backlog, quota,
-					   sslctx, epset,
-					   max_concurrent_streams, &sock);
+		result = isc_nm_listenhttp(
+			ifp->mgr->nm, ISC_NM_LISTEN_ALL, &ifp->addr,
+			ifp->mgr->backlog, quota, sslctx, epset,
+			max_concurrent_streams, proxy, &sock);
 	}
 
 	isc_nm_http_endpoints_detach(&epset);
@@ -633,6 +636,7 @@ ns_interface_listenhttp(ns_interface_t *ifp, isc_tlsctx_t *sslctx, char **eps,
 	return (result);
 #else
 	UNUSED(ifp);
+	UNUSED(proxy);
 	UNUSED(sslctx);
 	UNUSED(eps);
 	UNUSED(neps);
@@ -664,7 +668,7 @@ interface_setup(ns_interfacemgr_t *mgr, isc_sockaddr_t *addr, const char *name,
 
 	if (elt->is_http) {
 		result = ns_interface_listenhttp(
-			ifp, elt->sslctx, elt->http_endpoints,
+			ifp, elt->proxy, elt->sslctx, elt->http_endpoints,
 			elt->http_endpoints_number, elt->http_max_clients,
 			elt->max_concurrent_streams);
 		if (result != ISC_R_SUCCESS) {
@@ -675,7 +679,7 @@ interface_setup(ns_interfacemgr_t *mgr, isc_sockaddr_t *addr, const char *name,
 	}
 
 	if (elt->sslctx != NULL) {
-		result = ns_interface_listentls(ifp, elt->sslctx);
+		result = ns_interface_listentls(ifp, elt->proxy, elt->sslctx);
 		if (result != ISC_R_SUCCESS) {
 			goto cleanup_interface;
 		}
@@ -683,7 +687,7 @@ interface_setup(ns_interfacemgr_t *mgr, isc_sockaddr_t *addr, const char *name,
 		return (result);
 	}
 
-	result = ns_interface_listenudp(ifp);
+	result = ns_interface_listenudp(ifp, elt->proxy);
 	if (result != ISC_R_SUCCESS) {
 		if ((result == ISC_R_ADDRINUSE) && (addr_in_use != NULL)) {
 			*addr_in_use = true;
@@ -692,7 +696,7 @@ interface_setup(ns_interfacemgr_t *mgr, isc_sockaddr_t *addr, const char *name,
 	}
 
 	if (((mgr->sctx->options & NS_SERVER_NOTCP) == 0)) {
-		result = ns_interface_listentcp(ifp);
+		result = ns_interface_listentcp(ifp, elt->proxy);
 		if (result != ISC_R_SUCCESS) {
 			if ((result == ISC_R_ADDRINUSE) &&
 			    (addr_in_use != NULL))
@@ -1104,14 +1108,8 @@ do_scan(ns_interfacemgr_t *mgr, bool verbose, bool config) {
 		return (result);
 	}
 
-	result = dns_acl_create(mgr->mctx, 0, &localhost);
-	if (result != ISC_R_SUCCESS) {
-		goto cleanup_iter;
-	}
-	result = dns_acl_create(mgr->mctx, 0, &localnets);
-	if (result != ISC_R_SUCCESS) {
-		goto cleanup_localhost;
-	}
+	dns_acl_create(mgr->mctx, 0, &localhost);
+	dns_acl_create(mgr->mctx, 0, &localnets);
 
 	clearlistenon(mgr);
 
@@ -1292,13 +1290,9 @@ do_scan(ns_interfacemgr_t *mgr, bool verbose, bool config) {
 
 	dns_aclenv_set(mgr->aclenv, localhost, localnets);
 
-	/* cleanup_localnets: */
 	dns_acl_detach(&localnets);
-
-cleanup_localhost:
 	dns_acl_detach(&localhost);
 
-cleanup_iter:
 	isc_interfaceiter_destroy(&iter);
 	return (result);
 }

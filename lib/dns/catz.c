@@ -897,6 +897,13 @@ dns_catz_zone_add(dns_catz_zones_t *catzs, const dns_name_t *name,
 
 	LOCK(&catzs->lock);
 
+	/*
+	 * This function is called only during a (re)configuration, while
+	 * 'catzs->zones' can become NULL only during shutdown.
+	 */
+	INSIST(catzs->zones != NULL);
+	INSIST(!atomic_load(&catzs->shuttingdown));
+
 	result = isc_ht_find(catzs->zones, name->ndata, name->length,
 			     (void **)&catz);
 	switch (result) {
@@ -932,6 +939,10 @@ dns_catz_zone_get(dns_catz_zones_t *catzs, const dns_name_t *name) {
 	REQUIRE(ISC_MAGIC_VALID(name, DNS_NAME_MAGIC));
 
 	LOCK(&catzs->lock);
+	if (catzs->zones == NULL) {
+		UNLOCK(&catzs->lock);
+		return (NULL);
+	}
 	result = isc_ht_find(catzs->zones, name->ndata, name->length,
 			     (void **)&found);
 	UNLOCK(&catzs->lock);
@@ -1020,7 +1031,6 @@ dns__catz_zone_destroy(dns_catz_zone_t *catz) {
 	dns_catz_options_free(&catz->zoneoptions, mctx);
 
 	dns_catz_zones_detach(&catz->catzs);
-	isc_refcount_destroy(&catz->references);
 
 	isc_mem_put(mctx, catz, sizeof(*catz));
 }
@@ -1032,7 +1042,6 @@ dns__catz_zones_destroy(dns_catz_zones_t *catzs) {
 
 	catzs->magic = 0;
 	isc_mutex_destroy(&catzs->lock);
-	isc_refcount_destroy(&catzs->references);
 
 	isc_mem_putanddetach(&catzs->mctx, catzs, sizeof(*catzs));
 }
@@ -2243,6 +2252,11 @@ dns__catz_update_cb(void *data) {
 	 */
 	dns_name_toregion(&updb->origin, &r);
 	LOCK(&catzs->lock);
+	if (catzs->zones == NULL) {
+		UNLOCK(&catzs->lock);
+		result = ISC_R_SHUTTINGDOWN;
+		goto exit;
+	}
 	result = isc_ht_find(catzs->zones, r.base, r.length, (void **)&oldcatz);
 	is_active = (result == ISC_R_SUCCESS && oldcatz->active);
 	UNLOCK(&catzs->lock);
@@ -2478,15 +2492,6 @@ dns__catz_update_cb(void *data) {
 	isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL, DNS_LOGMODULE_MASTER,
 		      ISC_LOG_DEBUG(3),
 		      "catz: update_from_db: new zone merged");
-
-	/*
-	 * When we're doing reconfig and setting a new catalog zone
-	 * from an existing zone we won't have a chance to set up
-	 * update callback in zone_startload or axfr_makedb, but we will
-	 * call onupdate() artificially so we can register the callback here.
-	 */
-	dns_db_updatenotify_register(updb, dns_catz_dbupdate_callback,
-				     oldcatz->catzs);
 
 exit:
 	catz->updateresult = result;

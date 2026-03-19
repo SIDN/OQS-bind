@@ -79,7 +79,8 @@ recvresponse(void *arg) {
 		exit(-1);
 	}
 
-	dns_message_create(mctx, DNS_MESSAGE_INTENTPARSE, &response);
+	dns_message_create(mctx, NULL, NULL, DNS_MESSAGE_INTENTPARSE,
+			   &response);
 
 	result = dns_request_getresponse(request, response,
 					 DNS_MESSAGEPARSE_PRESERVEORDER);
@@ -141,7 +142,8 @@ sendquery(void) {
 				   dns_rootname, 0, NULL);
 	CHECK("dns_name_fromtext", result);
 
-	dns_message_create(mctx, DNS_MESSAGE_INTENTRENDER, &message);
+	dns_message_create(mctx, NULL, NULL, DNS_MESSAGE_INTENTRENDER,
+			   &message);
 
 	message->opcode = dns_opcode_query;
 	message->flags |= DNS_MESSAGEFLAG_RD;
@@ -275,7 +277,7 @@ main(int argc, char *argv[]) {
 
 	RUNCHECK(dst_lib_init(mctx, NULL));
 
-	RUNCHECK(dns_dispatchmgr_create(mctx, netmgr, &dispatchmgr));
+	RUNCHECK(dns_dispatchmgr_create(mctx, loopmgr, netmgr, &dispatchmgr));
 
 	RUNCHECK(dns_dispatch_createudp(
 		dispatchmgr, have_src ? &srcaddr : &bind_any, &dispatchv4));
