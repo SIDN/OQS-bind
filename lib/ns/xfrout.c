@@ -1258,7 +1258,7 @@ xfrout_ctx_create(isc_mem_t *mctx, ns_client_t *client, unsigned int id,
 	 * Note that although 65535-byte RRs are allowed in principle, they
 	 * cannot be zone-transferred (at least not if uncompressible),
 	 * because the message and RR headers would push the size of the
-	 * TCP message over the 65536 byte limit.
+	 * TCP message over the 65535 byte limit.
 	 */
 	mem = isc_mem_get(mctx, len);
 	isc_buffer_init(&xfr->buf, mem, len);
@@ -1324,8 +1324,8 @@ sendstream(xfrout_ctx_t *xfr) {
 		 * message.
 		 */
 
-		dns_message_create(xfr->mctx, DNS_MESSAGE_INTENTRENDER,
-				   &tcpmsg);
+		dns_message_create(xfr->mctx, NULL, NULL,
+				   DNS_MESSAGE_INTENTRENDER, &tcpmsg);
 		msg = tcpmsg;
 
 		msg->id = xfr->id;

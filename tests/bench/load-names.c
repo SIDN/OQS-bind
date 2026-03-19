@@ -183,24 +183,30 @@ thread_lfht(void *arg0) {
 static void *
 new_hashmap(isc_mem_t *mem) {
 	isc_hashmap_t *hashmap = NULL;
-	isc_hashmap_create(mem, 1, 0, &hashmap);
+	isc_hashmap_create(mem, 1, &hashmap);
 
 	return (hashmap);
 }
 
+static bool
+name_match(void *node, const void *key) {
+	const struct item_s *i = node;
+	return (dns_name_equal(&i->fixed.name, key));
+}
+
 static isc_result_t
 add_hashmap(void *hashmap, size_t count) {
-	isc_result_t result =
-		isc_hashmap_add(hashmap, NULL, item[count].fixed.name.ndata,
-				item[count].fixed.name.length, &item[count]);
+	isc_result_t result = isc_hashmap_add(
+		hashmap, dns_name_hash(&item[count].fixed.name), name_match,
+		&item[count].fixed.name, &item[count], NULL);
 	return (result);
 }
 
 static isc_result_t
 get_hashmap(void *hashmap, size_t count, void **pval) {
-	isc_result_t result =
-		isc_hashmap_find(hashmap, NULL, item[count].fixed.name.ndata,
-				 item[count].fixed.name.length, pval);
+	isc_result_t result = isc_hashmap_find(
+		hashmap, dns_name_hash(&item[count].fixed.name), name_match,
+		&item[count].fixed.name, pval);
 	return (result);
 }
 
@@ -547,7 +553,7 @@ main(int argc, char *argv[]) {
 			isc_mem_create(&mem);
 			map = fun->new (mem);
 
-			size_t nitems = ARRAY_SIZE(item) / (nthreads + 1);
+			size_t nitems = lines / (nthreads + 1);
 
 			isc_barrier_init(&barrier, nthreads);
 

@@ -495,15 +495,10 @@ control channels are used by the :iscman:`rndc` utility to send commands to
 and retrieve non-DNS results from a name server.
 
 .. namedconf:statement:: unix
-   :tags: server
+   :tags: obsolete
    :short: Specifies a Unix domain socket as a control channel.
 
-   A :any:`unix` control channel is a Unix domain socket listening at the
-   specified path in the file system. Access to the socket is specified by
-   the ``perm``, ``owner``, and ``group`` clauses. Note that on some platforms
-   (SunOS and Solaris), the permissions (``perm``) are applied to the parent
-   directory as the permissions on the socket itself are ignored.
-
+   This option has been removed and using it will cause a fatal error.
 
 .. namedconf:statement:: inet
    :tags: server
@@ -1481,21 +1476,11 @@ default is used.
    This is the pathname of the file the server writes memory usage statistics to
    on exit. If not specified, the default is ``named.memstats``.
 
-.. namedconf:statement:: lock-file
-   :tags: server
+.. lock-file:
+   :tags: obsolete
    :short: Sets the pathname of the file on which :iscman:`named` attempts to acquire a file lock when starting for the first time.
 
-   This is the pathname of a file on which :iscman:`named` attempts to acquire a
-   file lock when starting for the first time; if unsuccessful, the
-   server terminates, under the assumption that another server
-   is already running. If not specified, the default is
-   ``none``.
-
-   Specifying ``lock-file none`` disables the use of a lock file.
-   :any:`lock-file` is ignored if :iscman:`named` was run using the :option:`-X <named -X>`
-   option, which overrides it. Changes to :any:`lock-file` are ignored if
-   :iscman:`named` is being reloaded or reconfigured; it is only effective
-   when the server is first started.
+   This option has been removed and using it will cause a fatal error.
 
 .. namedconf:statement:: pid-file
    :tags: server
@@ -1763,6 +1748,17 @@ default is used.
               suffix ::;
           };
 
+.. namedconf:statement:: resolver-use-dns64
+   :tags: server
+   :short: Specifies whether to apply DNS64 mappings when sending queries.
+
+   If :any:`resolver-use-dns64` is set to ``yes``, then the IPv4-to-IPv6
+   address transformations specified by the :any:`dns64` option will be
+   applied to IPv4 server addresses to which recursive queries are sent.
+   This allows a server to perform lookups via a NAT64 connection; queries
+   that would have been sent via IPv4 are instead sent to mapped IPv6
+   addresses. The default is ``no``.
+
 .. namedconf:statement:: ipv4only-enable
    :tags: query
    :short: Enables automatic IPv4 zones if a :any:`dns64` block is configured.
@@ -1856,7 +1852,7 @@ default is used.
    The default is five minutes. It cannot be longer than :any:`nta-lifetime`, which
    cannot be longer than a week.
 
-:any:`max-zone-ttl`
+.. namedconf:statement:: max-zone-ttl
    :tags: deprecated
    :short: Specifies a maximum permissible time-to-live (TTL) value, in seconds.
 
@@ -1926,7 +1922,8 @@ default is used.
    operations and the number of authoritative answers per query type. The
    default is ``terse``, providing minimal statistics on zones
    (including name and current serial number, but not query type
-   counters).
+   counters), and also information about the currently ongoing incoming zone
+   transfers.
 
    These statistics may be accessed via the ``statistics-channel`` or
    using :option:`rndc stats`, which dumps them to the file listed in the
@@ -2374,9 +2371,9 @@ Boolean Options
    :tags: server
    :short: Sets the algorithm to be used when generating a server cookie.
 
-   This sets the algorithm to be used when generating the server cookie; the options are
-   "aes" or "siphash24". The default is "siphash24". The "aes" option remains for legacy
-   purposes.
+   This sets the algorithm to be used when generating the server cookie. The
+   default is "siphash24", which is the only supported option, as the
+   previously supported "aes" option has been removed.
 
 .. namedconf:statement:: cookie-secret
    :tags: server
@@ -2385,8 +2382,7 @@ Boolean Options
    If set, this is a shared secret used for generating and verifying
    EDNS COOKIE options within an anycast cluster. If not set, the system
    generates a random secret at startup. The shared secret is
-   encoded as a hex string and needs to be 128 bits for either "siphash24"
-   or "aes".
+   encoded as a hex string and needs to be 128 bits.
 
    If there are multiple secrets specified, the first one listed in
    :iscman:`named.conf` is used to generate new server cookies. The others
@@ -2837,6 +2833,44 @@ for details on how to specify IP address lists.
    the configured :any:`primaries` for the zone. :any:`allow-notify` can be used
    to expand the list of permitted hosts, not to reduce it.
 
+.. namedconf:statement:: allow-proxy
+   :tags: server
+   :short: Defines an :any:`address_match_list` for the client addresses allowed to send PROXYv2 headers.
+
+   The default :any:`address_match_list` is `none`, which means that
+   no client is allowed to do that by default for security reasons, as
+   the PROXYv2 protocol provides an easy way to spoof both source and
+   destination addresses.
+
+   This :any:`address_match_list` is primarily meant to have addresses
+   and subnets of the proxies that are allowed to send PROXYv2 headers
+   to BIND. In most cases, we do not recommend setting this
+   :any:`address_match_list` to be very allowing, in particular, to
+   set it to `any`, especially in the cases when PROXYv2 headers can be
+   accepted on publically available networking interfaces.
+
+   The specified option is the only option that matches against real
+   peer addresses when PROXYv2 headers are used. Most of the options
+   that work with peer addresses, use the ones extracted from PROXYv2
+   headers.
+
+   Also, see: :namedconf:ref:`allow-proxy-on`
+
+.. namedconf:statement:: allow-proxy-on
+   :tags: server
+   :short: Defines an :any:`address_match_list` for the interface addresses allowed to accept PROXYv2 headers. The option is mostly intended for multi-homed configurations.
+
+   The default :any:`address_match_list` is `any`, which means that
+   accepting PROXYv2 is allowed on any interface.
+
+   The option is useful in cases when you need to have precise control
+   over which interfaces PROXYv2 is allowed, as it is the only one
+   that matches against real interface addresses when PROXYv2 headers
+   are used. Most of the options that work with interface addresses
+   will use the ones extracted from PROXYv2 headers.
+
+   You may want to set :namedconf:ref:`allow-proxy` first.
+
 .. namedconf:statement:: allow-query
    :tags: query
    :short: Specifies which hosts (an IP address list) are allowed to send queries to this resolver.
@@ -3013,7 +3047,7 @@ for details on how to specify IP address lists.
    :rfc:`1034` to use case-insensitive name comparisons when checking for
    matching domain names.
 
-   If left undefined, the ACL defaults to ``none``: case-insensitive
+   If left undefined, the ACL defaults to ``none``: case-sensitive
    compression is used for all clients. If the ACL is defined and
    matches a client, case is ignored when compressing domain
    names in DNS responses sent to that client.
@@ -3070,9 +3104,10 @@ queries may be specified using the :any:`listen-on` and :any:`listen-on-v6` opti
    :tags: server
    :short: Specifies the IPv6 addresses on which a server listens for DNS queries.
 
-   The :any:`listen-on` and :any:`listen-on-v6` statements can each take an optional
-   port, TLS configuration identifier, and/or HTTP configuration identifier,
-   in addition to an :term:`address_match_list`.
+   The :any:`listen-on` and :any:`listen-on-v6` statements can each
+   take an optional port, PROXYv2 support switch, TLS configuration
+   identifier, and/or HTTP configuration identifier, in addition to an
+   :term:`address_match_list`.
 
    The :term:`address_match_list` in :any:`listen-on` specifies the IPv4 addresses
    on which the server will listen. (IPv6 addresses are ignored, with a
@@ -3084,6 +3119,60 @@ queries may be specified using the :any:`listen-on` and :any:`listen-on-v6` opti
    The server listens on all interfaces allowed by the address match list.
    If no :any:`listen-on-v6` is specified, the default is to listen for standard
    DNS queries on port 53 of all IPv6 interfaces.
+
+   When specified, the PROXYv2 support switch ``proxy`` allows
+   enabling the PROXYv2 protocol support. The PROXYv2 protocol
+   provides the means for passing connection information, such as a
+   client's source and destination addresses and ports, across
+   multiple layers of NAT or TCP/UDP proxies to back-end servers. The
+   addresses passed to by the PROXYv2 protocol are then used instead
+   of the peer and interface addresses provided by the operating
+   system.
+
+   The ``proxy`` switch can have the following values:
+
+   * ``plain`` - accept plain PROXYv2 headers. It is the only valid
+     option for transports that do not employ encryption. In the case
+     of transports that employ encryption, it instructs BIND that
+     PROXYv2 headers are sent without encryption before the TLS
+     handshake. In that case, only PROXYv2 headers are not encrypted.
+   * ``encrypted`` - accept encrypted PROXYv2 headers. In the case of
+     transports that employ encryption, it instructs BIND that PROXYv2
+     headers are sent encrypted immediately after the TLS
+     handshake. The option is valid only for the transports that employ
+     encryption.
+
+   You must consult your proxying front-end software documentation to
+   decide which value you need to use. If in doubt, use ``plain`` for
+   encrypted transports, especially for DNS-over-HTTPS (DoH), but
+   DNS-specific software is likely to need ``encrypted``.
+
+   It should be noted that when PROXYv2 is enabled on a listener, it
+   loses the ability to accept regular DNS queries without associated
+   PROXYv2 headers.
+
+   In some cases, PROXYv2 headers might not contain usable source and
+   destination addresses. In particular, that happens when the headers
+   use ``LOCAL`` command or the headers that use unspecified or
+   unsupported by BIND address types. If otherwise correct, such
+   headers are accepted by BIND and the real endpoint addresses are
+   used in these cases.
+
+   The PROXYv2 protocol is designed to be extensible and can carry
+   additional information in the form of type-length-values
+   (TLVs). Many of the types are defined in the protocol
+   specification, and for some of these, we do a reasonable amount of
+   validation in order to detect and reject ill-formed or hand-crafted
+   headers. Apart from that, this additional data, while accepted, is
+   not currently used by BIND for anything else.
+
+   By default, no client is allowed to send queries that contain
+   PROXYv2 protocol headers, even when support for the protocol is
+   enabled in a :any:`listen-on` statement. If you are interested in
+   enabling the PROXYv2 protocol support, you may also want to take a
+   look at :namedconf:ref:`allow-proxy` and
+   :namedconf:ref:`allow-proxy-on` options to adjust the corresponding
+   ACLs.
 
    If a TLS configuration is specified, :iscman:`named` will listen for DNS-over-TLS
    (DoT) connections, using the key and certificate specified in the
@@ -3114,6 +3203,9 @@ queries may be specified using the :any:`listen-on` and :any:`listen-on-v6` opti
       listen-on port 1234 { !1.2.3.4; 1.2/16; };
       listen-on port 8853 tls ephemeral { 4.3.2.1; };
       listen-on port 8453 tls ephemeral http myserver { 8.7.6.5; };
+      listen-on port 5300 proxy plain { !1.2.3.4; 1.2/16; };
+      listen-on port 8953 proxy encrypted tls ephemeral { 4.3.2.1; };
+      listen-on port 8553 proxy plain tls ephemeral http myserver { 8.7.6.5; };
 
    The first two lines instruct the name server to listen for standard DNS
    queries on port 53 of the IP address 5.6.7.8 and on port 1234 of an address
@@ -3130,9 +3222,12 @@ queries may be specified using the :any:`listen-on` and :any:`listen-on-v6` opti
 
       listen-on-v6 { any; };
       listen-on-v6 port 1234 { !2001:db8::/32; any; };
-      listen-on port 8853 tls example-tls { 2001:db8::100; };
-      listen-on port 8453 tls example-tls http default { 2001:db8::100; };
-      listen-on port 8000 tls none http myserver { 2001:db8::100; };
+      listen-on-v6 port 8853 tls example-tls { 2001:db8::100; };
+      listen-on-v6 port 8453 tls example-tls http default { 2001:db8::100; };
+      listen-on-v6 port 8000 tls none http myserver { 2001:db8::100; };
+      listen-on-v6 port 53000 proxy plain { !2001:db8::/32; any; };
+      listen-on-v6 port 8953 proxy encrypted tls example-tls { 2001:db8::100; };
+      listen-on-v6 port 8553 proxy plain tls example-tls http default { 2001:db8::100; };
 
    The first two lines instruct the name server to listen for standard DNS
    queries on port 53 of any IPv6 addresses, and on port 1234 of IPv6
@@ -3595,6 +3690,21 @@ system.
    than that imposed by :any:`recursive-clients`. If :any:`clients-per-query` is
    set to zero, :any:`max-clients-per-query` no longer applies and there is no
    upper bound, other than that imposed by :any:`recursive-clients`.
+
+.. namedconf:statement:: max-validations-per-fetch
+   :tags: server
+   :short: Set the maximum number of DNSSEC validations that can happen in single fetch
+
+   This is an **experimental** setting to set the maximum number of DNSSEC
+   validations that can happen in a single resolver fetch.  The default is 16.
+
+.. namedconf:statement:: max-validation-failures-per-fetch
+   :tags: server
+   :short: Set the maximum number of DNSSEC validation failures that can happen in single fetch
+
+   This is an **experimental** setting to set the maximum number of DNSSEC
+   validation failures that can happen in a single resolver fetch.  The default
+   is 1.
 
 .. namedconf:statement:: fetches-per-zone
    :tags: server, query
@@ -4133,19 +4243,6 @@ Tuning
 
    When :any:`stale-cache-enable` is set to ``no``, setting the :any:`max-stale-ttl`
    has no effect, the value of :any:`max-cache-ttl` will be ``0`` in such case.
-
-.. namedconf:statement:: resolver-nonbackoff-tries
-   :tags: server
-   :short: Specifies the number of retries before exponential backoff.
-
-   This specifies how many retries occur before exponential backoff kicks in. The
-   default is ``3``.
-
-.. namedconf:statement:: resolver-retry-interval
-   :tags: server, query
-   :short: Sets the base retry interval (in milliseconds).
-
-   This sets the base retry interval in milliseconds. The default is ``800``.
 
 .. namedconf:statement:: sig-validity-interval
    :tags: obsolete
@@ -5650,6 +5747,7 @@ Broken-out subsets of the statistics can be viewed at
 http://127.0.0.1:8888/xml/v3/status (server uptime and last
 reconfiguration time), http://127.0.0.1:8888/xml/v3/server (server and
 resolver statistics), http://127.0.0.1:8888/xml/v3/zones (zone
+statistics), http://127.0.0.1:8888/xml/v3/xfrins (incoming zone transfer
 statistics), http://127.0.0.1:8888/xml/v3/net (network status and socket
 statistics), http://127.0.0.1:8888/xml/v3/mem (memory manager
 statistics), and http://127.0.0.1:8888/xml/v3/traffic (traffic sizes).
@@ -5659,6 +5757,7 @@ http://127.0.0.1:8888/json, with the broken-out subsets at
 http://127.0.0.1:8888/json/v1/status (server uptime and last
 reconfiguration time), http://127.0.0.1:8888/json/v1/server (server and
 resolver statistics), http://127.0.0.1:8888/json/v1/zones (zone
+statistics), http://127.0.0.1:8888/json/v1/xfrins (incoming zone transfer
 statistics), http://127.0.0.1:8888/json/v1/net (network status and
 socket statistics), http://127.0.0.1:8888/json/v1/mem (memory manager
 statistics), and http://127.0.0.1:8888/json/v1/traffic (traffic sizes).
@@ -6104,15 +6203,15 @@ are configured with different versions of the same zone, each separate
 version uses the same set of signing keys.
 
 The :any:`dnssec-policy` statement requires dynamic DNS to be set up, or
-:any:`inline-signing` to be enabled.
+:any:`inline-signing` to be enabled (which is the default for DNSSEC zones).
 
 If :any:`inline-signing` is enabled, this means that a signed version of the
 zone is maintained separately and is written out to a different file on disk
 (the zone's filename plus a ``.signed`` extension).
 
-If the zone is dynamic because it is configured with an :any:`update-policy` or
-:any:`allow-update`, the DNSSEC records are written to the filename set in the
-original zone's :any:`file`, unless :any:`inline-signing` is enabled.
+If :any:`inline-signing` is disabled, the zone needs to be configured with
+an :any:`update-policy` or :any:`allow-update`. In such case, the DNSSEC
+records are written to the filename set in the original zone's :any:`file`.
 
 Key rollover timing is computed for each key according to the key
 lifetime defined in the KASP.  The lifetime may be modified by zone TTLs
@@ -6174,6 +6273,18 @@ The following options can be specified in a :any:`dnssec-policy` statement:
 
     This indicates the TTL to use when generating DNSKEY resource
     records. The default is 1 hour (3600 seconds).
+
+:any:`inline-signing`
+   :tags: dnssec
+   :short: Specifies whether BIND 9 maintains a separate signed version of a zone.
+
+   If ``yes``, BIND 9 maintains a separate signed version of the zone.
+   An unsigned zone is transferred in or loaded from disk and the signed
+   version of the zone is served with, possibly, a different serial
+   number. The signed version of the zone is stored in a file that is
+   the zone's filename (set in :any:`file`) with a ``.signed`` extension.
+
+   This behavior is enabled by default.
 
 :any:`keys`
     This is a list specifying the algorithms and roles to use when
@@ -6295,7 +6406,7 @@ The following options can be specified in a :any:`dnssec-policy` statement:
     This is similar to :any:`signatures-validity`, but for DNSKEY records.
     The default is ``P2W`` (2 weeks).
 
-.. namedconf:statement:: max-zone-ttl
+:any:`max-zone-ttl`
    :tags: zone, query
    :short: Specifies a maximum permissible time-to-live (TTL) value, in seconds.
 
@@ -6310,7 +6421,6 @@ The following options can be specified in a :any:`dnssec-policy` statement:
 
    The default value ``PT24H`` (24 hours).  A value of zero is treated
    as if the default value were in use.
-
 
 .. namedconf:statement:: nsec3param
    :tags: dnssec
@@ -7089,12 +7199,9 @@ Zone Options
    :tags: dnssec, zone
    :short: Specifies whether BIND 9 maintains a separate signed version of a zone.
 
-   If ``yes``, BIND 9 maintains a separate signed version of the zone.
-   An unsigned zone is transferred in or loaded from disk and the signed
-   version of the zone is served with, possibly, a different serial
-   number. The signed version of the zone is stored in a file that is
-   the zone's filename (set in :any:`file`) with a ``.signed`` extension.
-   This behavior is disabled by default.
+   The use of inline signing is determined by the :any:`dnssec-policy` for
+   the zone. If :any:`inline-signing` is explicitly set to ``yes`` or ``no``
+   in :any:`zone`, then it overrides any value from :any:`dnssec-policy`.
 
 :any:`multi-master`
    See the description of :any:`multi-master` in :ref:`boolean_options`.
@@ -7121,8 +7228,8 @@ perform dynamic updates to a zone:
 In both cases, BIND 9 writes the updates to the zone's filename
 set in :any:`file`.
 
-In the case of a DNSSEC zone, DNSSEC records are also written to
-the zone's filename, unless :any:`inline-signing` is enabled.
+In the case of a DNSSEC zone where :any:`inline-signing` is disabled, DNSSEC
+records are also written to the zone's filename.
 
    .. note:: The zone file can no longer be manually updated while ``named``
       is running; it is now necessary to perform :option:`rndc freeze`, edit,
@@ -7530,6 +7637,174 @@ Outgoing Queries
    The number of outgoing queries for each RR type sent from the internal
    resolver, maintained per view.
 
+Incoming Zone Transfers
+   Information about in-progress incoming zone transfers.
+
+   This section describes the information, which can be seen in the
+   HTML table about in-progress incoming zone transfers.  It lists
+   the meaning, units and possible range of values of each column,
+   and the key/attribute/element name (in parentheses) for the JSON
+   and XML output formats.
+
+   ``Zone Name`` (``name``)
+      Text string. This is the name of the zone being transferred,
+      as specified in the :any:`zone` declaration on this server.
+
+   ``Zone Type`` (``type``)
+      Text string. This is the type of zone being transferred, as
+      specified in the ``zone`` declaration on this server. Possible
+      values are: ``secondary``, ``stub``, ``redirect``, ``mirror``.
+
+   ``Local Serial`` (``serial``)
+      32 bit unsigned Integer. This is the current (old) serial
+      number of the zone being transferred. It comes from the SOA
+      record held on the current server.
+
+   ``Remote Serial`` (``remoteserial``)
+      32 bit unsigned Integer. This is the new serial number of the
+      zone being transferred. It comes from the SOA record held on
+      the primary server from which the zone is being transferred.
+
+   ``IXFR`` (``ixfr``)
+      Boolean. This says whether the transfer is incremental (using
+      IXFR) or full (using AXFR). Possible values are: ``Yes``,
+      ``No``.
+
+   ``State`` (``state``)
+      Text string. This is the current state of the transfer for
+      this zone. Possible values and their meanings are:
+
+         ``Needs Refresh``
+	     The zone needs a refresh, but the process hasn't started yet,
+	     which can be due to different factors, like the retry interval of
+	     the zone.
+
+         ``Pending``
+	     The zone is flagged for a refresh, but the process is currently
+	     in the queue and will start shortly, or is in a waiting state
+	     because of rate-limiting, see :any:`serial-query-rate`. The
+	     ``Duration (s)`` timer starts before entering this state.
+
+         ``Refresh SOA``
+	     Sending a refresh SOA query to get the zone serial number, then
+	     initiate a zone transfer, if necessary. If this step is successful,
+	     the ``SOA Query`` and ``Got SOA`` states will be skipped.
+	     Otherwise, the zone transfer procedure can still be initiated,
+	     and the SOA request will be attempted using the same transport as
+	     the zone transfer. The ``Duration (s)`` timer restarts before
+	     entering this state, and for each attempted connection (note that
+	     in UDP mode there can be several retries during one "connection"
+	     attempt).
+
+         ``Deferred``
+	     The zone is going to be refreshed, but the process was
+	     deferred due to quota, see :any:`transfers-in` and
+	     :any:`transfers-per-ns`. The ``Duration (s)`` timer restarts before
+	     entering this state.
+
+         ``SOA Query``
+	     Sending SOA query to get the zone serial number, then
+	     follow with a zone transfer, if necessary. The ``Duration (s)``
+	     timer restarts before entering this state.
+
+         ``Got SOA``
+	     An answer for the SOA query from the previous step is
+	     received, initiating a transfer.
+
+         ``Zone Transfer Request``
+	     Waiting for the zone transfer to start. The ``Duration (s)`` timer
+	     restarts before entering this state.
+
+         ``First Data``
+	     Waiting for the first data record of the transfer.
+
+         ``Receiving IXFR Data``
+	     Receiving data for an IXFR type incremental zone
+	     transfer.
+
+         ``Finalizing IXFR``
+             Finalizing an IXFR type incremental zone transfer.
+
+         ``Receiving AXFR Data``
+             Receiving data for an AXFR type zone transfer.
+
+         ``Finalizing AXFR``
+             Finalizing an AXFR type zone transfer.
+
+      .. note::
+         State names can change between BIND versions.
+
+   ``Additional Refresh Queued`` (``refreshqueued``)
+      Boolean. This shows that the zone is flagged for a refresh.
+      This can be set to ``Yes`` either when the zone transfer is
+      still in one of the pending states (see the description of
+      the ``State`` column), or when the transfer is in a running
+      state, but the zone was marked for another refresh again (e.g.
+      because of "notify" request from a primary server). Possible
+      values are: ``Yes``, ``No``.
+
+   ``Local Address`` (``localaddr``)
+      IP address - IPv4 or IPv6, as appropriate, and port number.
+      This shows the source address used to establish the connection
+      for the transfer.
+
+   ``Remote Address`` (``remoteaddr``)
+      IP address - IPv4 or IPv6, as appropriate, and port number.
+      This shows the destination address used to establish the
+      connection for the transfer.
+
+   ``SOA Transport`` (``soatransport``)
+      Text string. This is the transport protocol in use for the
+      SOA query.  Note, that this value can potentially change during the
+      process. For example, when the transfer is in the ``Refresh SOA``
+      state, the ``SOA Transport`` of the ongoing query can be shown as ``UDP``.
+      If that query fails or times out, it then can be retried using another
+      transport, or the transfer process can be initiated in "SOA before" mode,
+      where the SOA query will be attempted using the same transport as the zone
+      transfer. See the description of the ``State`` field for more information.
+      Possible values are: ``UDP``, ``TCP``, ``TLS``, ``None``.
+
+   ``Transport`` (``transport``)
+      Text string. This is the transport protocol in use for the
+      transfer. Possible values are: ``TCP``, ``TLS``.
+
+   ``TSIG Key Name`` (``tsigkeyname``)
+      Text string. This is the name of the TSIG key specified for
+      use with this zone in the :any:`zone` declaration (if any).
+
+   ``Duration (s)`` (``duration``)
+      64 bit unsigned Integer. This is the time, in seconds, that
+      the current major state of the transfer process has been running so far.
+      The timer starts after the refresh SOA request is queued (before the
+      ``Pending`` state), then it restarts several times during the whole
+      process to indicate the duration of the current major state. See the
+      descriptions of the different states to find out the states, before which
+      this timer restarts.
+
+   ``Messages Received`` (``nmsg``)
+      64 bit unsigned Integer. This is the number of DNS messages
+      received. It does not include transport overheads, such as
+      TCP ACK.
+
+   ``Records Received`` (``nrecs``)
+      64 bit unsigned Integer. This is the number of individual RRs
+      received so far. If an address record has, for example, five
+      addresses associated with the same name, it counts as five
+      RRs.
+
+   ``Bytes Received`` (``nbytes``)
+      64 bit unsigned Integer. This is the number of usable bytes
+      of DNS data. It does not include transport overhead.
+
+   .. note::
+      Depending on the current state of the transfer, some of the
+      values may be empty or set to ``-`` (meaning "not available").
+      Also, in the case of the JSON output format, the corresponding
+      keys can be missing or values can be set to ``NULL``.  For
+      example, it isn't known whether a transfer is using AXFR or
+      IXFR until the first data is received (see the description
+      of the ``State`` column).
+
 Name Server Statistics
    Statistics counters for incoming request processing.
 
@@ -7926,17 +8201,16 @@ Socket I/O Statistics Counters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Socket I/O statistics counters are defined per socket type, which are
-``UDP4`` (UDP/IPv4), ``UDP6`` (UDP/IPv6), ``TCP4`` (TCP/IPv4), ``TCP6``
-(TCP/IPv6), ``Unix`` (Unix Domain), and ``FDwatch`` (sockets opened
-outside the socket module). In the following list, ``<TYPE>`` represents
+``UDP4`` (UDP/IPv4), ``UDP6`` (UDP/IPv6), ``TCP4`` (TCP/IPv4), and ``TCP6``
+(TCP/IPv6). In the following list, ``<TYPE>`` represents
 a socket type. Not all counters are available for all socket types;
 exceptions are noted in the descriptions.
 
 ``<TYPE>Open``
-    This indicates the number of sockets opened successfully. This counter does not apply to the ``FDwatch`` type.
+    This indicates the number of sockets opened successfully.
 
 ``<TYPE>OpenFail``
-    This indicates the number of failures to open sockets. This counter does not apply to the ``FDwatch`` type.
+    This indicates the number of failures to open sockets.
 
 ``<TYPE>Close``
     This indicates the number of closed sockets.
@@ -7951,10 +8225,10 @@ exceptions are noted in the descriptions.
     This indicates the number of connections established successfully.
 
 ``<TYPE>AcceptFail``
-    This indicates the number of failures to accept incoming connection requests. This counter does not apply to the ``UDP`` and ``FDwatch`` types.
+    This indicates the number of failures to accept incoming connection requests. This counter does not apply to the ``UDP`` type.
 
 ``<TYPE>Accept``
-    This indicates the number of incoming connections successfully accepted. This counter does not apply to the ``UDP`` and ``FDwatch`` types.
+    This indicates the number of incoming connections successfully accepted. This counter does not apply to the ``UDP`` type.
 
 ``<TYPE>SendErr``
     This indicates the number of errors in socket send operations.

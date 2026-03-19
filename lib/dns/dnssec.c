@@ -2041,10 +2041,20 @@ dns_dnssec_syncupdate(dns_dnsseckeylist_t *keys, dns_dnsseckeylist_t *rmkeys,
 	unsigned char keybuf[DST_KEY_MAXSIZE];
 	isc_result_t result;
 	dns_dnsseckey_t *key;
+	dns_ttl_t cdsttl = ttl;
+	dns_ttl_t cdnskeyttl = ttl;
 
 	REQUIRE(digests != NULL);
 	REQUIRE(keys != NULL);
 	REQUIRE(rmkeys != NULL);
+
+	if (dns_rdataset_isassociated(cds)) {
+		cdsttl = cds->ttl;
+	}
+
+	if (dns_rdataset_isassociated(cdnskey)) {
+		cdnskeyttl = cdnskey->ttl;
+	}
 
 	for (key = ISC_LIST_HEAD(*keys); key != NULL;
 	     key = ISC_LIST_NEXT(key, link))
@@ -2065,7 +2075,8 @@ dns_dnssec_syncupdate(dns_dnsseckeylist_t *keys, dns_dnsseckeylist_t *rmkeys,
 			{
 				RETERR(add_cds(key, &cdnskeyrdata,
 					       (const char *)keystr, cds,
-					       alg->digest, ttl, diff, mctx));
+					       alg->digest, cdsttl, diff,
+					       mctx));
 			}
 
 			if (gencdnskey &&
@@ -2078,7 +2089,7 @@ dns_dnssec_syncupdate(dns_dnsseckeylist_t *keys, dns_dnsseckeylist_t *rmkeys,
 					"CDNSKEY for key %s is now published",
 					keystr);
 				RETERR(addrdata(&cdnskeyrdata, diff, origin,
-						ttl, mctx));
+						cdnskeyttl, mctx));
 			}
 		}
 

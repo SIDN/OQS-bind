@@ -93,7 +93,6 @@ dns__nta_destroy(dns__nta_t *nta) {
 	REQUIRE(nta->timer == NULL);
 
 	nta->magic = 0;
-	isc_refcount_destroy(&nta->references);
 	if (dns_rdataset_isassociated(&nta->rdataset)) {
 		dns_rdataset_disassociate(&nta->rdataset);
 	}
@@ -140,7 +139,6 @@ dns_ntatable_create(dns_view_t *view, isc_loopmgr_t *loopmgr,
 
 static void
 dns__ntatable_destroy(dns_ntatable_t *ntatable) {
-	isc_refcount_destroy(&ntatable->references);
 	ntatable->magic = 0;
 	isc_rwlock_destroy(&ntatable->rwlock);
 	dns_qpmulti_destroy(&ntatable->table);
@@ -415,7 +413,7 @@ dns_ntatable_covered(dns_ntatable_t *ntatable, isc_stdtime_t now,
 
 	RWLOCK(&ntatable->rwlock, isc_rwlocktype_read);
 	dns_qpmulti_query(ntatable->table, &qpr);
-	result = dns_qp_findname_ancestor(&qpr, name, 0, &pval, NULL);
+	result = dns_qp_lookup(&qpr, name, NULL, NULL, NULL, &pval, NULL);
 	nta = pval;
 
 	switch (result) {
@@ -481,7 +479,7 @@ dns_ntatable_totext(dns_ntatable_t *ntatable, const char *view,
 	dns_qpmulti_query(ntatable->table, &qpr);
 	dns_qpiter_init(&qpr, &iter);
 
-	while (dns_qpiter_next(&iter, &pval, NULL) == ISC_R_SUCCESS) {
+	while (dns_qpiter_next(&iter, NULL, &pval, NULL) == ISC_R_SUCCESS) {
 		dns__nta_t *n = pval;
 		char nbuf[DNS_NAME_FORMATSIZE];
 		char tbuf[ISC_FORMATHTTPTIMESTAMP_SIZE];
@@ -537,7 +535,7 @@ dns_ntatable_save(dns_ntatable_t *ntatable, FILE *fp) {
 	dns_qpmulti_query(ntatable->table, &qpr);
 	dns_qpiter_init(&qpr, &iter);
 
-	while (dns_qpiter_next(&iter, &pval, NULL) == ISC_R_SUCCESS) {
+	while (dns_qpiter_next(&iter, NULL, &pval, NULL) == ISC_R_SUCCESS) {
 		dns__nta_t *n = pval;
 		isc_buffer_t b;
 		char nbuf[DNS_NAME_FORMATSIZE + 1], tbuf[80];
@@ -581,7 +579,9 @@ dns_ntatable_save(dns_ntatable_t *ntatable, FILE *fp) {
 }
 
 static void
-dns__nta_shutdown_cb(dns__nta_t *nta) {
+dns__nta_shutdown_cb(void *arg) {
+	dns__nta_t *nta = arg;
+
 	REQUIRE(VALID_NTA(nta));
 
 	if (isc_log_wouldlog(dns_lctx, ISC_LOG_DEBUG(3))) {
@@ -604,7 +604,7 @@ dns__nta_shutdown(dns__nta_t *nta) {
 	REQUIRE(VALID_NTA(nta));
 
 	dns__nta_ref(nta);
-	isc_async_run(nta->loop, (isc_job_cb)dns__nta_shutdown_cb, nta);
+	isc_async_run(nta->loop, dns__nta_shutdown_cb, nta);
 	nta->shuttingdown = true;
 }
 
@@ -621,7 +621,7 @@ dns_ntatable_shutdown(dns_ntatable_t *ntatable) {
 	ntatable->shuttingdown = true;
 
 	dns_qpiter_init(&qpr, &iter);
-	while (dns_qpiter_next(&iter, &pval, NULL) == ISC_R_SUCCESS) {
+	while (dns_qpiter_next(&iter, NULL, &pval, NULL) == ISC_R_SUCCESS) {
 		dns__nta_t *n = pval;
 		dns__nta_shutdown(n);
 		dns__nta_detach(&n);

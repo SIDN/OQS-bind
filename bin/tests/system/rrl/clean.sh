@@ -13,11 +13,10 @@
 
 # Clean up after rrl tests.
 
-rm -f  */named.memstats */named.run */named.stats */log-* */session.key
+rm -f */named.memstats */named.run */named.stats */log-* */session.key
 rm -f broken.conf
 rm -f broken.out
 rm -f dig.out* *mdig.out*
 rm -f ns*/managed-keys.bind*
 rm -f ns*/named.conf
-rm -f ns*/named.lock
 rm -f ns3/bl*.db */*.jnl */*.core */*.pid

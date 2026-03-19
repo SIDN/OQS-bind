@@ -13,8 +13,6 @@
 
 /*! \file */
 
-#define DNS_NAME_USEINLINE 1
-
 #include <inttypes.h>
 #include <stdbool.h>
 #include <sys/stat.h>
@@ -251,6 +249,13 @@ dns__rbtnode_namelen(dns_rbtnode_t *node) {
 	} while (!dns_name_isabsolute(&current));
 
 	return (len);
+}
+
+unsigned int
+dns__rbtnode_getsize(dns_rbtnode_t *node) {
+	REQUIRE(DNS_RBTNODE_VALID(node));
+
+	return (NODE_SIZE(node));
 }
 
 /*
@@ -728,7 +733,7 @@ dns_rbt_addname(dns_rbt_t *rbt, const dns_name_t *name, void *data) {
 	 * there is data associated with a node.
 	 */
 	if (result == ISC_R_SUCCESS ||
-	    (result == ISC_R_EXISTS && node->data == NULL))
+	    (result == ISC_R_EXISTS && node != NULL && node->data == NULL))
 	{
 		node->data = data;
 		result = ISC_R_SUCCESS;
@@ -1515,6 +1520,7 @@ create_node(isc_mem_t *mctx, const dns_name_t *name, dns_rbtnode_t **nodep) {
 	};
 
 	ISC_LINK_INIT(node, deadlink);
+	ISC_LINK_INIT(node, prunelink);
 
 	isc_refcount_init(&node->references, 0);
 
