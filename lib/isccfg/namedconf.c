@@ -150,6 +150,11 @@ static cfg_type_t cfg_type_zone;
 
 static cfg_tuplefielddef_t listenon_tuple_fields[] = {
 	{ "port", &cfg_type_optional_port, 0 },
+	/*
+	 * Let's follow the protocols encapsulation order (lower->upper), at
+	 * least roughly.
+	 */
+	{ "proxy", &cfg_type_astring, CFG_CLAUSEFLAG_EXPERIMENTAL },
 	{ "tls", &cfg_type_astring, 0 },
 #if HAVE_LIBNGHTTP2
 	{ "http", &cfg_type_astring, 0 },
@@ -1082,7 +1087,7 @@ static cfg_type_t cfg_type_bracketed_portlist = { "bracketed_portlist",
 						  &cfg_rep_list,
 						  &cfg_type_portrange };
 
-static const char *cookiealg_enums[] = { "aes", "siphash24", NULL };
+static const char *cookiealg_enums[] = { "siphash24", NULL };
 static cfg_type_t cfg_type_cookiealg = { "cookiealg",	    cfg_parse_enum,
 					 cfg_print_ustring, cfg_doc_enum,
 					 &cfg_rep_string,   &cookiealg_enums };
@@ -1269,7 +1274,7 @@ static cfg_clausedef_t options_clauses[] = {
 	  CFG_CLAUSEFLAG_OBSOLETE },
 	{ "listen-on", &cfg_type_listenon, CFG_CLAUSEFLAG_MULTI },
 	{ "listen-on-v6", &cfg_type_listenon, CFG_CLAUSEFLAG_MULTI },
-	{ "lock-file", &cfg_type_qstringornone, 0 },
+	{ "lock-file", &cfg_type_qstringornone, CFG_CLAUSEFLAG_ANCIENT },
 	{ "managed-keys-directory", &cfg_type_qstring, 0 },
 	{ "match-mapped-addresses", &cfg_type_boolean, 0 },
 	{ "max-rsa-exponent-size", &cfg_type_uint32, 0 },
@@ -2021,6 +2026,9 @@ static cfg_clausedef_t view_clauses[] = {
 	{ "additional-from-auth", NULL, CFG_CLAUSEFLAG_ANCIENT },
 	{ "additional-from-cache", NULL, CFG_CLAUSEFLAG_ANCIENT },
 	{ "allow-new-zones", &cfg_type_boolean, 0 },
+	{ "allow-proxy", &cfg_type_bracketed_aml, CFG_CLAUSEFLAG_EXPERIMENTAL },
+	{ "allow-proxy-on", &cfg_type_bracketed_aml,
+	  CFG_CLAUSEFLAG_EXPERIMENTAL },
 	{ "allow-query-cache", &cfg_type_bracketed_aml, 0 },
 	{ "allow-query-cache-on", &cfg_type_bracketed_aml, 0 },
 	{ "allow-recursion", &cfg_type_bracketed_aml, 0 },
@@ -2095,6 +2103,10 @@ static cfg_clausedef_t view_clauses[] = {
 	{ "max-recursion-queries", &cfg_type_uint32, 0 },
 	{ "max-stale-ttl", &cfg_type_duration, 0 },
 	{ "max-udp-size", &cfg_type_uint32, 0 },
+	{ "max-validations-per-fetch", &cfg_type_uint32,
+	  CFG_CLAUSEFLAG_EXPERIMENTAL },
+	{ "max-validation-failures-per-fetch", &cfg_type_uint32,
+	  CFG_CLAUSEFLAG_EXPERIMENTAL },
 	{ "message-compression", &cfg_type_boolean, 0 },
 	{ "min-cache-ttl", &cfg_type_duration, 0 },
 	{ "min-ncache-ttl", &cfg_type_duration, 0 },
@@ -2125,9 +2137,10 @@ static cfg_clausedef_t view_clauses[] = {
 	{ "request-nsid", &cfg_type_boolean, 0 },
 	{ "request-sit", NULL, CFG_CLAUSEFLAG_ANCIENT },
 	{ "require-server-cookie", &cfg_type_boolean, 0 },
-	{ "resolver-nonbackoff-tries", &cfg_type_uint32, 0 },
+	{ "resolver-nonbackoff-tries", &cfg_type_uint32,
+	  CFG_CLAUSEFLAG_ANCIENT },
 	{ "resolver-query-timeout", &cfg_type_uint32, 0 },
-	{ "resolver-retry-interval", &cfg_type_uint32, 0 },
+	{ "resolver-retry-interval", &cfg_type_uint32, CFG_CLAUSEFLAG_ANCIENT },
 	{ "response-padding", &cfg_type_resppadding, 0 },
 	{ "response-policy", &cfg_type_rpz, 0 },
 	{ "rfc2308-type1", NULL, CFG_CLAUSEFLAG_ANCIENT },
@@ -2149,8 +2162,8 @@ static cfg_clausedef_t view_clauses[] = {
 	{ "synth-from-dnssec", &cfg_type_boolean, 0 },
 	{ "topology", NULL, CFG_CLAUSEFLAG_ANCIENT },
 	{ "transfer-format", &cfg_type_transferformat, 0 },
-	{ "trust-anchor-telemetry", &cfg_type_boolean,
-	  CFG_CLAUSEFLAG_EXPERIMENTAL },
+	{ "trust-anchor-telemetry", &cfg_type_boolean, 0 },
+	{ "resolver-use-dns64", &cfg_type_boolean, 0 },
 	{ "use-queryport-pool", NULL, CFG_CLAUSEFLAG_ANCIENT },
 	{ "validate-except", &cfg_type_namelist, 0 },
 	{ "v6-bias", &cfg_type_uint32, 0 },

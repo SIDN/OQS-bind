@@ -277,7 +277,6 @@ cfg_nsec3param_fromconfig(const cfg_obj_t *config, dns_kasp_t *kasp,
 	uint32_t saltlen = DEFAULT_NSEC3PARAM_SALTLEN;
 	uint32_t badalg = 0;
 	bool optout = false;
-	isc_result_t ret = ISC_R_SUCCESS;
 
 	/* How many iterations. */
 	obj = cfg_tuple_get(config, "iterations");
@@ -314,16 +313,12 @@ cfg_nsec3param_fromconfig(const cfg_obj_t *config, dns_kasp_t *kasp,
 		return (DNS_R_NSEC3BADALG);
 	}
 
-	if (iter > dns_nsec3_maxiterations()) {
-		ret = DNS_R_NSEC3ITERRANGE;
-	}
-
-	if (ret == DNS_R_NSEC3ITERRANGE) {
+	if (iter != DEFAULT_NSEC3PARAM_ITER) {
 		cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
 			    "dnssec-policy: nsec3 iterations value %u "
-			    "out of range",
+			    "not allowed, must be zero",
 			    iter);
-		return (ret);
+		return (DNS_R_NSEC3ITERRANGE);
 	}
 
 	/* Opt-out? */

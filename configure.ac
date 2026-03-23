@@ -16,7 +16,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 19)dnl
-m4_define([bind_VERSION_PATCH], 17)dnl
+m4_define([bind_VERSION_PATCH], 21)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -208,10 +208,10 @@ AS_IF([test -z "$PKG_CONFIG"],
 #
 # Pick Userspace-RCU flavor (developer only option)
 #
-# [pairwise: --with-liburcu=membarrier, --with-liburcu=qsbr, --with-liburcu=mb, --with-liburcu=signal, --with-liburcu=bp]
+# [pairwise: skip]
 AC_ARG_WITH([liburcu],
 	    [AS_HELP_STRING([--with-liburcu=FLAVOR],
-			     [Build with Userspace-RCU variant (membarrier|qsbr|mb|signal|bp) [default=membarrier]]))],
+			     [Build with Userspace-RCU variant (developer-only option) (membarrier|qsbr|mb|bp) [default=membarrier]]))],
 	    [], [with_liburcu=membarrier])
 
 AC_MSG_CHECKING([liburcu flavor])
@@ -225,13 +225,13 @@ AS_CASE([$with_liburcu],
 	[mb],
 	[RCU_FLAVOR="liburcu-mb"
 	 AC_DEFINE([RCU_MB], [1], [Build with mb Userspace-RCU flavor])],
-	[signal],
-	[RCU_FLAVOR="liburcu-signal"
-	 AC_DEFINE([RCU_SIGNAL], [1], [Build with signal Userspace-RCU flavor])],
 	[bp],
 	[RCU_FLAVOR="liburcu-bp"
 	 AC_DEFINE([RCU_BP], [1], [Build with bulletproof Userspace-RCU flavor])],
 	[AC_MSG_ERROR([Invalid Userspace-RCU flavor picked])])
+
+AS_IF([test "$with_liburcu" != "membarrier" && test "$enable_developer" != "yes"],
+      [AC_MSG_ERROR([Changing Userspace-RCU variant is allowed only in developer mode])])
 
 AC_MSG_RESULT([$RCU_FLAVOR])
 
@@ -315,26 +315,6 @@ AC_PATH_PROGS([PERL], [perl5 perl])
 AC_SUBST([PERL])
 AM_CONDITIONAL([HAVE_PERL], [test -n "$PERL"])
 
-AX_PERL_MODULE([Digest::HMAC])
-AM_CONDITIONAL([HAVE_PERLMOD_DIGEST_HMAC],
-	       [test "$HAVE_PERLMOD_DIGEST__HMAC" = "yes"])
-
-AX_PERL_MODULE([File::Fetch])
-AM_CONDITIONAL([HAVE_PERLMOD_FILE_FETCH],
-	       [test "$HAVE_PERLMOD_FILE__FETCH" = "yes"])
-
-AX_PERL_MODULE([Net::DNS])
-AM_CONDITIONAL([HAVE_PERLMOD_NET_DNS],
-	       [test "$HAVE_PERLMOD_NET__DNS" = "yes"])
-
-AX_PERL_MODULE([Net::DNS::Nameserver])
-AM_CONDITIONAL([HAVE_PERLMOD_NET_DNS_NAMESERVER],
-	       [test "$HAVE_PERLMOD_NET__DNS__NAMESERVER" = "yes"])
-
-AX_PERL_MODULE([Time::HiRes])
-AM_CONDITIONAL([HAVE_PERLMOD_TIME_HIRES],
-	       [test "$HAVE_PERLMOD_TIME__HIRES" = "yes"])
-
 #
 # Python is optional, it is used only by some of the system test scripts.
 #
@@ -346,9 +326,6 @@ AS_IF([test -z "$PYTEST"],
       [AC_MSG_WARN([pytest not found, some system tests will be skipped])])
 AC_SUBST([PYTEST])
 AM_CONDITIONAL([HAVE_PYTEST], [test -n "$PYTEST"])
-
-AX_PYTHON_MODULE([dns])
-AM_CONDITIONAL([HAVE_PYMOD_DNS], [test "$HAVE_PYMOD_DNS" = "yes"])
 
 #
 # xsltproc is optional, it is used only by system test scripts.
@@ -794,12 +771,6 @@ AC_CHECK_FUNCS([EVP_sha1], [:],
 #
 AC_CHECK_FUNCS([EVP_sha224 EVP_sha256 EVP_sha384 EVP_sha512], [:],
 	       [AC_MSG_FAILURE([SHA-2 support in OpenSSL is mandatory.])])
-
-#
-# Check for OpenSSL AES support
-#
-AC_CHECK_FUNCS([EVP_aes_128_ecb EVP_aes_192_ecb EVP_aes_256_ecb], [:],
-	       [AC_MSG_FAILURE([AES support in OpenSSL is mandatory.])])
 
 #
 # Check for OpenSSL 1.1.x/LibreSSL functions
@@ -1302,10 +1273,6 @@ AC_ARG_VAR([SPHINX_BUILD], [path to sphinx-build binary used to build the docume
 AC_PATH_PROG([SPHINX_BUILD], [sphinx-build], [])
 AM_CONDITIONAL([HAVE_SPHINX_BUILD], [test -n "$SPHINX_BUILD"])
 
-AC_PATH_PROG([XELATEX], [xelatex], [])
-AC_PATH_PROG([LATEXMK], [latexmk], [])
-AM_CONDITIONAL([HAVE_XELATEX], [test -n "$XELATEX" && test -n "$LATEXMK"])
-
 #
 # Build the man pages only if we have prebuilt manpages or we can build them from RST sources
 #
@@ -1700,8 +1667,6 @@ AC_CONFIG_FILES([bin/tests/Makefile
 
 AC_CONFIG_FILES([bin/tests/system/ifconfig.sh],
 		[chmod +x bin/tests/system/ifconfig.sh])
-AC_CONFIG_FILES([bin/tests/system/legacy.run.sh],
-		[chmod +x bin/tests/system/legacy.run.sh])
 AC_CONFIG_FILES([bin/tests/system/start.sh],
 		[chmod +x bin/tests/system/start.sh])
 AC_CONFIG_FILES([bin/tests/system/stop.sh],
