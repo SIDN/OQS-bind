@@ -7014,7 +7014,7 @@ resume_dslookup(void *arg) {
 	}
 
 	/* Preserve data from resp before freeing it. */
-	frdataset = resp->rdataset;
+	frdataset = resp->rdataset; /* a.k.a. fctx->nsrrset */
 	result = resp->result;
 	isc_mem_putanddetach(&resp->mctx, resp, sizeof(*resp));
 
@@ -7038,6 +7038,13 @@ resume_dslookup(void *arg) {
 		}
 		dns_rdataset_clone(frdataset, &fctx->nameservers);
 
+		/*
+		 * Disassociate now the NS's are saved.
+		 */
+		if (dns_rdataset_isassociated(frdataset)) {
+			dns_rdataset_disassociate(frdataset);
+		}
+
 		fctx->ns_ttl = fctx->nameservers.ttl;
 		fctx->ns_ttl_ok = true;
 		log_ns_ttl(fctx, "resume_dslookup");
@@ -7055,10 +7062,21 @@ resume_dslookup(void *arg) {
 
 	case ISC_R_SHUTTINGDOWN:
 	case ISC_R_CANCELED:
-		/* Don't try anymore */
+		/* Don't try anymore. */
+		/* Can't be done in cleanup. */
+		if (dns_rdataset_isassociated(frdataset)) {
+			dns_rdataset_disassociate(frdataset);
+		}
 		goto cleanup;
 
 	default:
+		/*
+		 * Disassociate for the next dns_resolver_createfetch call.
+		 */
+		if (dns_rdataset_isassociated(frdataset)) {
+			dns_rdataset_disassociate(frdataset);
+		}
+
 		/*
 		 * If the chain of resume_dslookup() invocations managed to
 		 * chop off enough labels from the original DS owner name to
@@ -7107,10 +7125,6 @@ resume_dslookup(void *arg) {
 
 cleanup:
 	dns_resolver_destroyfetch(&fetch);
-
-	if (dns_rdataset_isassociated(frdataset)) {
-		dns_rdataset_disassociate(frdataset);
-	}
 
 	if (result != ISC_R_SUCCESS) {
 		/* An error occurred, tear down whole fctx */
