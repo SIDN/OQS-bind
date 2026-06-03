@@ -233,6 +233,8 @@ dst_lib_init(isc_mem_t *mctx, const char *engine) {
 #endif /* HAVE_GSSAPI */
 	RETERR(dst__openssloqs_init(&dst_t_func[DST_ALG_MAYO2]));
 	RETERR(dst__openssloqs_init(&dst_t_func[DST_ALG_SQISIGN1]));
+	RETERR(dst__openssloqs_init(&dst_t_func[DST_ALG_SNOVA37172]));
+	RETERR(dst__openssloqs_init(&dst_t_func[DST_ALG_SNOVA2454]));
 	RETERR(dst__openssloqs_init(&dst_t_func[DST_ALG_FALCON512]));
 	RETERR(dst__openssloqs_init(&dst_t_func[DST_ALG_DILITHIUM2]));
 	RETERR(dst__openssloqs_init(&dst_t_func[DST_ALG_SPHINCSSHA256128S]));
@@ -1505,6 +1507,12 @@ dst_key_sigsize(const dst_key_t *key, unsigned int *n) {
 		break;
 	case DST_ALG_SQISIGN1:
 		*n = DNS_SIG_SQISIGN1SIZE;
+		break;
+	case DST_ALG_SNOVA37172:
+		*n = DNS_SIG_SNOVA37172SIZE;
+		break;
+	case DST_ALG_SNOVA2454:
+		*n = DNS_SIG_SNOVA2454SIZE;
 		break;
 	case DST_ALG_FALCON512:
 		*n = DNS_SIG_FALCON512SIZE;

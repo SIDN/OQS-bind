@@ -114,6 +114,8 @@ typedef enum dst_algorithm {
 	DST_ALG_HMACSHA384 = 164, /* XXXMPA */
 	DST_ALG_HMACSHA512 = 165, /* XXXMPA */
 	DST_ALG_HMAC_LAST = DST_ALG_HMACSHA512,
+	DST_ALG_SNOVA2454 = 247,
+	DST_ALG_SNOVA37172 = 248,
 	DST_ALG_MAYO2 = 249,
 	DST_ALG_SQISIGN1 = 250,
 	DST_ALG_FALCON512 = 251,
@@ -125,13 +127,14 @@ typedef enum dst_algorithm {
 /*% A buffer of this size is large enough to hold any key */
 // #define DST_KEY_MAXSIZE 5120 // OQS changed from 1280
 // #define DST_KEY_MAXSIZE 5492 // OQS+MAYO2 changed from 5120
-#define DST_KEY_MAXSIZE 5120 // OQS+MAYO2,round2 change it back
+// #define DST_KEY_MAXSIZE 5120 // OQS+MAYO2,round2 change it back
+#define DST_KEY_MAXSIZE 13123 // SNOVA37172 changed to at least 9842
 
 /*%
  * A buffer of this size is large enough to hold the textual representation
  * of any key
  */
-#define DST_KEY_MAXTEXTSIZE 10240 // OQS changed from 2048
+#define DST_KEY_MAXTEXTSIZE 14336 // OQS changed from 2048
 
 /*% 'Type' for dst_read_key() */
 #define DST_TYPE_KEY	  0x1000000 /* KEY key */

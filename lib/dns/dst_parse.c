@@ -115,6 +115,12 @@ static struct parse_map map[] = {
 	{ TAG_SQISIGN1_PRIVATEKEY, "PrivateKey:" },
 	{ TAG_SQISIGN1_PUBLICKEY, "PublicKey:" },
 
+	{ TAG_SNOVA37172_PRIVATEKEY, "PrivateKey:" },
+	{ TAG_SNOVA37172_PUBLICKEY, "PublicKey:" },
+
+	{ TAG_SNOVA2454_PRIVATEKEY, "PrivateKey:" },
+	{ TAG_SNOVA2454_PUBLICKEY, "PublicKey:" },
+
 	{ TAG_FALCON512_PRIVATEKEY, "PrivateKey:" },
 	{ TAG_FALCON512_PUBLICKEY, "PublicKey:" },
 
@@ -476,6 +482,8 @@ check_data(const dst_private_t *priv, const unsigned int alg, bool old,
 		return (check_hmac_sha(priv, HMACSHA512_NTAGS, alg));
 	case DST_ALG_MAYO2:
 	case DST_ALG_SQISIGN1:
+	case DST_ALG_SNOVA37172:
+	case DST_ALG_SNOVA2454:
 	case DST_ALG_FALCON512:
 	case DST_ALG_DILITHIUM2:
 	case DST_ALG_SPHINCSSHA256128S:
@@ -830,6 +838,12 @@ dst__privstruct_writefile(const dst_key_t *key, const dst_private_t *priv,
 		break;
 	case DST_ALG_SQISIGN1:
 		fprintf(fp, "(SQISIGN1)\n");
+		break;
+	case DST_ALG_SNOVA37172:
+		fprintf(fp, "(SNOVA37172)\n");
+		break;
+	case DST_ALG_SNOVA2454:
+		fprintf(fp, " (SNOVA2454)\n");
 		break;
 	case DST_ALG_FALCON512:
 		fprintf(fp, "(FALCON512)\n");

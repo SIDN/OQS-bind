@@ -39,6 +39,8 @@
 		goto err; \
 	}
 
+#define SNOVA2454_PRIVATEKEYSIZE     48
+#define SNOVA37172_PRIVATEKEYSIZE    48
 #define MAYO2_PRIVATEKEYSIZE	 	 24
 #define SQISIGN1_PRIVATEKEYSIZE	 	 353
 #define FALCON512_PRIVATEKEYSIZE	 1281
@@ -94,6 +96,32 @@ openssloqs_alg_info(dst_algorithm_t key_alg) {
 				.ntags = OQS_PQC_NTAGS,
 				.private_key_tag = TAG_SQISIGN1_PRIVATEKEY,
 				.public_key_tag = TAG_SQISIGN1_PUBLICKEY, },
+		};
+		return &oqs_alginfo;
+	}
+	if (key_alg == DST_ALG_SNOVA37172) {
+		static const oqs_alginfo_t oqs_alginfo = {
+			.alg_name = "snova37172",
+			.key_size = DNS_KEY_SNOVA37172SIZE,
+			.priv_key_size = SNOVA37172_PRIVATEKEYSIZE,
+			.sig_size = DNS_SIG_SNOVA37172SIZE,
+			.tags = {
+				.ntags = OQS_PQC_NTAGS,
+				.private_key_tag = TAG_SNOVA37172_PRIVATEKEY,
+				.public_key_tag = TAG_SNOVA37172_PUBLICKEY, },
+		};
+		return &oqs_alginfo;
+	}
+	if (key_alg == DST_ALG_SNOVA2454) {
+		static const oqs_alginfo_t oqs_alginfo = {
+			.alg_name = "snova2454",
+			.key_size = DNS_KEY_SNOVA2454SIZE,
+			.priv_key_size = SNOVA2454_PRIVATEKEYSIZE,
+			.sig_size = DNS_SIG_SNOVA2454SIZE,
+			.tags = {
+				.ntags = OQS_PQC_NTAGS,
+				.private_key_tag = TAG_SNOVA2454_PRIVATEKEY,
+				.public_key_tag = TAG_SNOVA2454_PUBLICKEY, },
 		};
 		return &oqs_alginfo;
 	}
@@ -545,6 +573,8 @@ openssloqs_parse(dst_key_t *key, isc_lex_t *lexer, dst_key_t *pub) {
 		switch (priv.elements[i].tag) {
 		case TAG_MAYO2_PRIVATEKEY:
 		case TAG_SQISIGN1_PRIVATEKEY:
+		case TAG_SNOVA37172_PRIVATEKEY:
+		case TAG_SNOVA2454_PRIVATEKEY:
 		case TAG_FALCON512_PRIVATEKEY:
 		case TAG_DILITHIUM2_PRIVATEKEY:
 		case TAG_SPHINCSSHA256128S_PRIVATEKEY:
@@ -552,6 +582,8 @@ openssloqs_parse(dst_key_t *key, isc_lex_t *lexer, dst_key_t *pub) {
 			break;
 		case TAG_MAYO2_PUBLICKEY:
 		case TAG_SQISIGN1_PUBLICKEY:
+		case TAG_SNOVA37172_PUBLICKEY:
+		case TAG_SNOVA2454_PUBLICKEY:
 		case TAG_FALCON512_PUBLICKEY:
 		case TAG_DILITHIUM2_PUBLICKEY:
 		case TAG_SPHINCSSHA256128S_PUBLICKEY:
