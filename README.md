@@ -1,9 +1,5 @@
 # OQS-bind
 
-This repository uses SIDN Labs' OQS-bind to implement two SNOVA signature algorithms. 
-
-## SIDN Labs' OQS-bind
-
 SIDN Labs' OQS-bind is a fork of deSEC's and Jason Goertzen's OQS-bind, which is a fork of ISC's BIND9.
 This fork take advantage of [Open Quantum Safe](https://github.com/open-quantum-safe)'s
 [liboqs](https://github.com/open-quantum-safe/liboqs) and [oqs-provider](https://github.com/open-quantum-safe/oqs-provider).
@@ -23,5 +19,5 @@ This project is not officially affiliated with Open Quantum Safe.
 ## Building
 
 In order to build OQS-bind, some version of OpenSSL 3.2+ must be installed.
-We build OQS-bind [as shown here](https://github.com/tbliki/OQS-bind-container/blob/main/Dockerfile).
+We build OQS-bind [as shown here](https://github.com/SIDN/OQS-bind-container/blob/main/Dockerfile).
 
